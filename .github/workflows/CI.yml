@@ -7,6 +7,9 @@ env:
   # which modern CMake rejects outright. This tells CMake to treat it as 3.5.
   CMAKE_POLICY_VERSION_MINIMUM: '3.5'
 
+permissions:
+  contents: write
+
 on:
   push:
     branches:
@@ -112,7 +115,7 @@ jobs:
             index.js
             index.d.ts
 
-release:
+  release:
     name: Release
     runs-on: ubuntu-latest
     needs: build
