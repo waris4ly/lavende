@@ -3,6 +3,9 @@ name: CI
 env:
   DEBUG: napi-*
   MACOSX_DEPLOYMENT_TARGET: '10.13'
+  # libopus (vendored by audiopus_sys) declares cmake_minimum_required < 3.5,
+  # which modern CMake rejects outright. This tells CMake to treat it as 3.5.
+  CMAKE_POLICY_VERSION_MINIMUM: '3.5'
 
 on:
   push:
@@ -67,14 +70,21 @@ jobs:
         run: |
           brew install opus pkg-config cmake
 
+      - name: Setup MSVC dev environment (Windows)
+        if: matrix.settings.host == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Install system dependencies (Windows)
         if: matrix.settings.host == 'windows-latest'
         shell: pwsh
         run: |
-          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y --force
-          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine")
+          choco install ninja -y
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+          ninja --version
           cmake --version
-          echo "CMAKE_GENERATOR=Visual Studio 17 2022" >> $env:GITHUB_ENV
+          echo "CMAKE_GENERATOR=Ninja" >> $env:GITHUB_ENV
           echo "OPUS_BUILD_FROM_SOURCE=1" >> $env:GITHUB_ENV
 
       - name: Cache Cargo
