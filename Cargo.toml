@@ -2,6 +2,6 @@
 members = [
     "library",
     "src/cargo",
-    "src/npm"
+    "src/node"
 ]
 resolver = "2"

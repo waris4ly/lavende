@@ -102,11 +102,11 @@ jobs:
           key: ${{ matrix.settings.target }}-cargo-${{ hashFiles('library/Cargo.toml') }}
 
       - name: Install dependencies
-        working-directory: ./src/npm
+        working-directory: ./src/node
         run: npm ci
 
       - name: Build native binary
-        working-directory: ./src/npm
+        working-directory: ./src/node
         run: ${{ matrix.settings.build }}
 
       - name: Upload artifact
@@ -114,9 +114,9 @@ jobs:
         with:
           name: bindings-${{ matrix.settings.target }}
           path: |
-            src/npm/*.node
-            src/npm/*.js
-            src/npm/*.d.ts
+            src/node/*.node
+            src/node/*.js
+            src/node/*.d.ts
 
   release:
     name: Release
@@ -138,7 +138,7 @@ jobs:
           path: artifacts
 
       - name: Move artifacts
-        working-directory: ./src/npm
+        working-directory: ./src/node
         run: npm run artifacts
 
       - name: Verify binaries landed correctly
@@ -148,15 +148,15 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            src/npm/*.node
-            src/npm/*.js
-            src/npm/*.d.ts
+            src/node/*.node
+            src/node/*.js
+            src/node/*.d.ts
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish to npm
-        working-directory: ./src/npm
+        working-directory: ./src/node
         run: |
           npm run build:ts
           npm config set //registry.npmjs.org/:_authToken=$NPM_TOKEN
