@@ -139,16 +139,10 @@ jobs:
 
       - name: Move artifacts
         working-directory: ./src/npm
-        run: |
-          for dir in ../../artifacts/bindings-*; do
-            if [ -d "$dir" ]; then
-              cp -v $dir/src/npm/*.node . 2>/dev/null || true
-            fi
-          done
-          ls -la *.node
+        run: npm run artifacts
 
-      - name: List packages
-        run: ls -la
+      - name: Verify binaries landed correctly
+        run: find npm -name "*.node"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -161,12 +155,3 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Publish to npm
-        working-directory: ./src/npm
-        run: |
-          npm config set //registry.npmjs.org/:_authToken=$NPM_TOKEN
-          npm publish --ignore-scripts --access public --provenance
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
