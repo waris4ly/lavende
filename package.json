@@ -25,7 +25,8 @@
   "files": [
     "npm",
     "index.js",
-    "index.d.ts"
+    "index.d.ts",
+    "*.node"
   ],
   "napi": {
     "name": "lavende",
@@ -44,9 +45,7 @@
   "scripts": {
     "build": "napi build --platform --release --cargo-cwd rust",
     "build:debug": "napi build --platform --cargo-cwd rust",
-    "prepublishOnly": "napi prepublish -t npm --skip-gh-release",
-    "version": "napi version",
-    "artifacts": "napi artifacts"
+    "version": "napi version"
   },
   "engines": {
     "node": ">= 16"
@@ -55,12 +54,5 @@
     "@napi-rs/cli": "^2.18.4",
     "@types/node": "^26.0.1",
     "typescript": "^5.4.0"
-  },
-  "optionalDependencies": {
-    "lavende-darwin-arm64": "0.1.0",
-    "lavende-darwin-x64": "0.1.0",
-    "lavende-linux-arm64-gnu": "0.1.0",
-    "lavende-linux-x64-gnu": "0.1.0",
-    "lavende-win32-x64-msvc": "0.1.0"
   }
 }
