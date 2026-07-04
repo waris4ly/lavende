@@ -4,12 +4,11 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use crate::audio::{
     Mixer,
     filters::FilterChain,
-    playback::{PlaybackState, TrackHandle, handle::PlaybackState as PlayState},
-    processor::DecoderCommand,
+    playback::{TrackHandle, handle::PlaybackState as PlayState},
 };
 use crate::common::types::{ChannelId, GuildId, SessionId, Shared, UserId};
 use crate::events::EventSender;
-use crate::gateway::{DaveHandler, VoiceEngine, VoiceGateway, VoiceGatewayConfig};
+use crate::gateway::{VoiceGateway, VoiceGatewayConfig};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio_util::sync::CancellationToken;
@@ -295,7 +294,7 @@ impl Player {
                 *handle_guard = Some(handle);
             }
             events_clone.send("trackStart", json!({}));
-            let mut err_rx = err_rx;
+            let err_rx = err_rx;
             tokio::spawn(async move {
                 if let Ok(err) = err_rx.recv_async().await {
                     events_clone.send("error", json!({ "message": err }));
