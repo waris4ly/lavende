@@ -1,6 +1,6 @@
 {
   "name": "lavende",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "In-process Discord voice connection and playback engine",
   "main": "npm/index.js",
   "types": "npm/index.d.ts",
@@ -57,10 +57,13 @@
     "typescript": "^5.4.0"
   },
   "optionalDependencies": {
-    "lavende-darwin-x64": "0.1.0",
     "lavende-darwin-arm64": "0.1.0",
-    "lavende-linux-x64-gnu": "0.1.0",
+    "lavende-darwin-x64": "0.1.0",
     "lavende-linux-arm64-gnu": "0.1.0",
+    "lavende-linux-x64-gnu": "0.1.0",
     "lavende-win32-x64-msvc": "0.1.0"
+  },
+  "dependencies": {
+    "lavende": "^0.1.0"
   }
 }
