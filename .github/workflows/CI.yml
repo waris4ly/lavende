@@ -3,8 +3,6 @@ name: CI
 env:
   DEBUG: napi-*
   MACOSX_DEPLOYMENT_TARGET: '10.13'
-  # libopus (vendored by audiopus_sys) declares cmake_minimum_required < 3.5,
-  # which modern CMake rejects outright. This tells CMake to treat it as 3.5.
   CMAKE_POLICY_VERSION_MINIMUM: '3.5'
 
 permissions:
@@ -143,23 +141,17 @@ jobs:
         with:
           path: artifacts
 
-      - name: Move artifacts
-        run: |
-          for dir in artifacts/bindings-*; do
-            if [ -d "$dir" ]; then
-              cp -v $dir/*.node . 2>/dev/null || true
-            fi
-          done
-          ls -la *.node
+      - name: Move artifacts into npm platform packages
+        run: npm run artifacts
 
-      - name: List packages
-        run: ls -la
+      - name: Verify binaries landed correctly
+        run: find npm -name "*.node"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            *.node
+            npm/*/*.node
             index.js
             index.d.ts
           draft: false
@@ -168,8 +160,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure npm
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
+        run: echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
