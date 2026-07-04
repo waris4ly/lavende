@@ -114,10 +114,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: bindings-${{ matrix.settings.target }}
-          path: |
-            src/node/*.node
-            src/node/*.js
-            src/node/*.d.ts
+          path: src/node
+          include: |
+            *.node
+            index.js
+            index.d.ts
 
   release:
     name: Release
@@ -132,31 +133,57 @@ jobs:
         with:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
+          cache: npm
           cache-dependency-path: src/node/package-lock.json
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Install dependencies
+        working-directory: ./src/node
+        run: npm ci
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Verify binaries landed correctly
-        run: find npm -name "*.node"
+      - name: Move artifacts to src/node
+        working-directory: ./src/node
+        run: |
+          for dir in ../../artifacts/bindings-*; do
+            if [ -d "$dir" ]; then
+              cp -v $dir/src/node/*.node . 2>/dev/null || true
+            fi
+          done
+          ls -la *.node
+
+      - name: Build TypeScript
+        working-directory: ./src/node
+        run: npm run build:ts
+
+      - name: List built files
+        working-directory: ./src/node
+        run: |
+          ls -la *.node || true
+          ls -la dist/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
             src/node/*.node
-            src/node/*.js
-            src/node/*.d.ts
+            src/node/dist/*
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Publish to npm
         working-directory: ./src/node
         run: |
-          npm run build:ts
           npm config set //registry.npmjs.org/:_authToken=$NPM_TOKEN
           npm publish --ignore-scripts --access public --provenance
         env:
