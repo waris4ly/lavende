@@ -24,8 +24,6 @@
   ],
   "files": [
     "dist",
-    "index.js",
-    "index.d.ts",
     "*.node"
   ],
   "napi": {
@@ -45,10 +43,7 @@
   "scripts": {
     "build": "napi build --platform --release",
     "build:debug": "napi build --platform",
-    "build:ts": "tsc",
-    "prepublishOnly": "napi prepublish -t npm",
-    "version": "napi version",
-    "artifacts": "napi artifacts"
+    "build:ts": "tsc"
   },
   "engines": {
     "node": ">= 16"
