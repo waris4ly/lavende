@@ -1203,6 +1203,12 @@ pub mod track {
         }
     }
 
+    #[allow(dead_code)]
+    fn is_playability_error(msg: &str) -> bool {
+        msg.contains("This video ")
+            || msg.contains("This is a private video")
+            || msg.contains("This trailer cannot be loaded")
+    }
 }
 use crate::{
     common::types::SharedRw,
