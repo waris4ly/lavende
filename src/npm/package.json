@@ -2,8 +2,8 @@
   "name": "lavende",
   "version": "0.1.0",
   "description": "In-process Discord voice connection and playback engine",
-  "main": "index.js",
-  "types": "index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "author": "Debauchery Party",
   "license": "Apache-2.0",
   "repository": {
@@ -23,9 +23,10 @@
     "rust"
   ],
   "files": [
-    "npm",
+    "dist",
     "index.js",
-    "index.d.ts"
+    "index.d.ts",
+    "*.node"
   ],
   "napi": {
     "name": "lavende",
@@ -44,6 +45,8 @@
   "scripts": {
     "build": "napi build --platform --release",
     "build:debug": "napi build --platform",
+    "build:ts": "tsc",
+    "prepublishOnly": "napi prepublish -t npm",
     "version": "napi version",
     "artifacts": "napi artifacts"
   },
