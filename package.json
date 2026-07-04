@@ -62,8 +62,5 @@
     "lavende-linux-arm64-gnu": "0.1.0",
     "lavende-linux-x64-gnu": "0.1.0",
     "lavende-win32-x64-msvc": "0.1.0"
-  },
-  "dependencies": {
-    "lavende": "^0.1.0"
   }
 }
