@@ -3,6 +3,8 @@ name: CI
 env:
   DEBUG: napi-*
   MACOSX_DEPLOYMENT_TARGET: '10.13'
+  # libopus (vendored by audiopus_sys) declares cmake_minimum_required < 3.5,
+  # which modern CMake rejects outright. This tells CMake to treat it as 3.5.
   CMAKE_POLICY_VERSION_MINIMUM: '3.5'
 
 permissions:
@@ -96,13 +98,15 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            rust/target/
-          key: ${{ matrix.settings.target }}-cargo-${{ hashFiles('rust/Cargo.toml') }}
+            target/
+          key: ${{ matrix.settings.target }}-cargo-${{ hashFiles('library/Cargo.toml') }}
 
       - name: Install dependencies
+        working-directory: ./src/npm
         run: npm ci
 
       - name: Build native binary
+        working-directory: ./src/npm
         run: ${{ matrix.settings.build }}
 
       - name: Upload artifact
@@ -110,9 +114,9 @@ jobs:
         with:
           name: bindings-${{ matrix.settings.target }}
           path: |
-            *.node
-            index.js
-            index.d.ts
+            src/npm/*.node
+            src/npm/*.js
+            src/npm/*.d.ts
 
   release:
     name: Release
@@ -128,20 +132,13 @@ jobs:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-
-      - name: Install dependencies
-        run: npm ci
-
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Move artifacts into npm platform packages
+      - name: Move artifacts
+        working-directory: ./src/npm
         run: npm run artifacts
 
       - name: Verify binaries landed correctly
@@ -151,10 +148,19 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            npm/*/*.node
-            index.js
-            index.d.ts
+            src/npm/*.node
+            src/npm/*.js
+            src/npm/*.d.ts
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish to npm
+        working-directory: ./src/npm
+        run: |
+          npm run build:ts
+          npm config set //registry.npmjs.org/:_authToken=$NPM_TOKEN
+          npm publish --ignore-scripts --access public --provenance
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

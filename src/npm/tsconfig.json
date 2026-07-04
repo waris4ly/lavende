@@ -5,11 +5,12 @@
     "lib": ["ES2022"],
     "declaration": true,
     "sourceMap": true,
-    "rootDir": "./npm",
+    "rootDir": ".",
+    "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["npm/**/*.ts"]
+  "include": ["*.ts"]
 }
