@@ -1,0 +1,10 @@
+{
+  "name": "lavende-darwin-arm64",
+  "version": "0.1.7",
+  "os": ["darwin"],
+  "cpu": ["arm64"],
+  "main": "lavende.darwin-arm64.node",
+  "files": ["lavende.darwin-arm64.node"],
+  "license": "Apache-2.0",
+  "engines": { "node": ">= 16" }
+}
