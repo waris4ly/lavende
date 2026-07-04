@@ -1202,6 +1202,8 @@ pub mod track {
             Err(format!("All clients failed: {last_error}"))
         }
     }
+
+    #[allow(dead_code)]
     fn is_playability_error(msg: &str) -> bool {
         msg.contains("This video ")
             || msg.contains("This is a private video")
