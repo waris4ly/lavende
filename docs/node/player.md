@@ -8,6 +8,28 @@ The `Player` represents an active audio session bound to a specific Discord Guil
 
 When you receive a play command, you should retrieve an existing player or create one if the guild currently has no active session.
 
+<details open>
+<summary><b>TypeScript Example</b></summary>
+
+```typescript
+import { Player } from 'lavende';
+
+let player: Player | undefined = manager.players.get(guildId);
+
+if (!player) {
+    player = manager.createPlayer({
+        guildId: guildId,
+        voiceChannelId: voiceChannelId,
+        textChannelId: textChannelId, // Optional: Where to send "Now Playing" messages
+        volume: 100 // Scale from 0 to 1000
+    });
+}
+```
+</details>
+
+<details>
+<summary><b>JavaScript Example</b></summary>
+
 ```javascript
 let player = manager.players.get(guildId);
 
@@ -15,11 +37,12 @@ if (!player) {
     player = manager.createPlayer({
         guildId: guildId,
         voiceChannelId: voiceChannelId,
-        textChannelId: textChannelId, // Where to send "Now Playing" messages
-        volume: 100 // Scale from 0 to 1000
+        textChannelId: textChannelId,
+        volume: 100
     });
 }
 ```
+</details>
 
 ---
 
@@ -33,7 +56,7 @@ Lavende utilizes an internal resolution system that bypasses standard HTTP overh
 | `playlist` | A collection of tracks was returned (e.g., a YouTube playlist). |
 | `track` | A single track or search result was returned. |
 
-```javascript
+```typescript
 // The resolver expects the query and an arbitrary "requester" object for tracking
 const res = await player.search("lofi beats to study to", message.author);
 
@@ -56,7 +79,7 @@ if (res.loadType === 'playlist') {
 
 If the player is currently idle, you must explicitly command it to connect to the voice channel and begin draining the queue.
 
-```javascript
+```typescript
 if (!player.playing) {
     await player.connect();
     await player.play();
@@ -85,22 +108,24 @@ Lavende operates asynchronously and emits lifecycle events via the standard `Eve
 > [!TIP]
 > Make sure to call `player.destroy()` on `queueEnd` to free up the allocated memory in the Rust core.
 
-```javascript
-player.on('trackStart', (p, track) => {
-    console.log(`Now playing: ${track.info.title} requested by ${track.requester.username}`);
+```typescript
+import { Track } from 'lavende';
+
+player.on('trackStart', (p: Player, track: Track) => {
+    console.log(`Now playing: ${track.info.title}`);
 });
 
-player.on('trackEnd', (p, track, reason) => {
+player.on('trackEnd', (p: Player, track: Track, reason: string) => {
     // 'reason' can be 'finished', 'stopped', 'replaced', 'loadFailed'
     console.log(`Finished ${track.info.title}`);
 });
 
-player.on('queueEnd', (p) => {
+player.on('queueEnd', (p: Player) => {
     console.log("Queue ended, tearing down session.");
     p.destroy();
 });
 
-player.on('error', (p, error) => {
+player.on('error', (p: Player, error: Error) => {
     console.error("A native rust error occurred:", error);
 });
 ```

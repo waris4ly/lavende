@@ -35,7 +35,7 @@ Navigate to your language of choice to explore detailed integration guides, API 
 - [**Core Architecture & FFI**](./architecture.md) — Dive into the internals of the Rust bridge and UDP orchestration.
 
 ### 2. Language References
-- [**Node.js Integration**](./nodejs/README.md) — Complete guide for V8 / JavaScript environments.
+- [**Node.js Integration**](./node/README.md) — Complete guide for V8 / JavaScript environments.
 - [**Python Integration**](./python/README.md) — Complete guide for asyncio-based Python applications.
 - [**Golang Integration**](./golang/README.md) — Complete guide leveraging CGO and goroutines.
 
