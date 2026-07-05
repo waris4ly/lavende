@@ -90,7 +90,7 @@ jobs:
             cp target/release/lavende_go.lib src/go/lavende/
           else
             cp target/release/liblavende_go.a src/go/lavende/
-          endif
+          fi
 
       - name: Verify Go module compiles
         working-directory: ./src/go/lavende
