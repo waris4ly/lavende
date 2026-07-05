@@ -94,6 +94,14 @@ jobs:
           args: --release --out dist
           sccache: 'true'
           manylinux: auto
+          before-script-linux: |
+           if command -v yum &> /dev/null; then
+            yum install -y opus-devel pkgconfig
+           elif command -v apt-get &> /dev/null; then
+            apt-get update && apt-get install -y libopus-dev pkg-config
+           elif command -v apk &> /dev/null; then
+            apk add opus-dev pkgconfig
+           fi
         env:
          CFLAGS_aarch64_unknown_linux_gnu: "-D__ARM_ARCH=8"
 
