@@ -91,9 +91,11 @@ jobs:
         with:
           working-directory: ./src/python
           target: ${{ matrix.target }}
-          args: --release --out dist --zig
+          args: --release --out dist
           sccache: 'true'
           manylinux: auto
+        env:
+         CFLAGS_aarch64_unknown_linux_gnu: "-D__ARM_ARCH=8"
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
