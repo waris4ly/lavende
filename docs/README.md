@@ -44,3 +44,20 @@ Navigate to your language of choice to explore detailed integration guides, API 
 
 > [!TIP]
 > If you are migrating from Lavalink or a similar service, we highly recommend reading the [Architecture](./architecture.md) page first to understand the shift from an external microservice model to an embedded native model.
+
+---
+
+## Acknowledgements
+
+This project is an independent open-source initiative. It is not intended to compete with, criticize, or harm any existing projects. We have great respect for the work done by the teams behind [Lavalink](https://github.com/lavalink-devs/Lavalink), [NodeLink](https://github.com/PerformanC/NodeLink), and [lavalink-client](https://github.com/tomato6966/lavalink-client), which have been instrumental in the Discord music bot ecosystem. If you find this project useful, feel free to use it. If not, that's perfectly fine too.
+
+Built using:
+- [Lavalink](https://github.com/lavalink-devs/Lavalink) - For inspiration and protocol design
+- [NodeLink](https://github.com/PerformanC/NodeLink) - For additional inspiration
+- [lavalink-client](https://github.com/tomato6966/lavalink-client) - For client implementation inspiration
+- [napi-rs](https://napi.rs/) - Rust bindings for Node.js
+- [symphonia](https://github.com/pdm-project/symphonia) - Pure Rust audio decoding
+- [audiopus](https://github.com/discord/opus) - Opus encoding
+- [tokio](https://tokio.rs/) - Async runtime
+
+Our only goal with Lavende is to make high-performance audio processing easier and more accessible for everyone in the developer community.

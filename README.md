@@ -1,393 +1,105 @@
+[![npm version](https://img.shields.io/npm/v/lavende.svg?color=cb3837)](https://www.npmjs.com/package/lavende)
+[![PyPI version](https://img.shields.io/pypi/v/lavende.svg?color=3775a9)](https://pypi.org/project/lavende/)
+[![Crates.io](https://img.shields.io/crates/v/lavende.svg?color=fc8d62)](https://crates.io/crates/lavende)
+[![Go Reference](https://pkg.go.dev/badge/github.com/debaucheryparty/lavende.svg)](https://pkg.go.dev/github.com/debaucheryparty/lavende)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/debaucheryparty/lavende/blob/master/LICENSE)
+[![Release](https://img.shields.io/github/v/tag/debaucheryparty/lavende?label=release)](https://github.com/debaucheryparty/lavende/releases/latest)
+
+<img align="right" src="/archive/lavende.png" width=192 alt="lavende logo">
+
 # Lavende
 
-**In-process Discord voice connection and audio playback engine**
+Lavende is a high-performance native audio processing library designed specifically for [Discord](https://discord.com) bots. It completely replaces traditional external JVM-based nodes by running a native Rust core directly inside your bot's process.
 
-[![npm version](https://img.shields.io/npm/v/lavende.svg)](https://www.npmjs.com/package/lavende)
-[![PyPI version](https://img.shields.io/pypi/v/lavende.svg)](https://pypi.org/project/lavende/)
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+## Summary
 
-## Features
+1. [Features](#features)
+2. [Getting Started](#getting-started)
+3. [Documentation](#documentation)
+4. [Examples](#examples)
+5. [License](#license)
 
-- **Native Performance** - Written in Rust for maximum speed and efficiency
-- **No Separate Server** - Runs directly in your Node.js or Python process
-- **Audio Sources** - YouTube, Spotify, SoundCloud, Apple Music, Deezer, and more
-- **Audio Effects** - Equalizer, timescale, rotation, vibrato, tremolo, reverb, and more
-- **Low Latency** - Direct function calls instead of REST/WebSocket overhead
-- **DAVE E2EE** - Discord's end-to-end encryption support
-- **Zero Dependencies** - Prebuilt binaries for all platforms
-- **Multi-Language** - Available for Node.js and Python
+### Features
 
-## Installation
+- [x] **Native Performance**: Engineered entirely in Rust for a minimal memory footprint and blistering execution speed.
+- [x] **Zero-IPC Latency**: Executes directly inside your application without REST or WebSocket overhead.
+- [x] **Embedded DSP Engine**: Apply Nightcore, Vaporwave, Bassboost, Equalizers, and 3D Rotation effortlessly on the native audio stream.
+- [x] **[DAVE (E2EE)](https://discord.com/developers/docs/topics/voice-connections#endtoend-encryption-dave-protocol)**: Full support for Discord's End-to-End Encryption protocol out of the box.
+- [x] **Multi-Language Support**: Fully functional and strictly typed wrappers for **Node.js**, **Python**, **Golang**, and **Rust**.
+- [x] **Audio Sources**: Built-in resolution for YouTube, SoundCloud, Spotify, Apple Music, and Deezer via internal C-bindings.
 
-### Node.js
+## Getting Started
 
-```bash
-npm install lavende
+### Installing
+
+Depending on your language, install Lavende via your package manager:
+
+**Node.js**:
+```sh
+$ npm install lavende
 ```
 
-### Python
-
-```bash
-pip install lavende
+**Python**:
+```sh
+$ pip install lavende
 ```
 
-Lavende automatically downloads the correct prebuilt binary for your platform (Windows, macOS, Linux).
+**Golang**:
+```sh
+$ go get github.com/debaucheryparty/lavende
+```
 
-## Quick Start
+**Rust**:
+```sh
+$ cargo add lavende
+```
 
-### Node.js
+### Initializing Lavende
+
+Lavende sits side-by-side with your Discord API wrapper (e.g., discord.js, discord.py, discordgo). You simply pipe raw voice socket events into the Lavende Manager so that the Rust core can establish the UDP connection.
+
+Here is a quick Node.js initialization strategy:
 
 ```javascript
 const { Client, GatewayIntentBits } = require('discord.js');
 const { LavendeManager } = require('lavende');
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildVoiceStates,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
-  ]
-});
-
-const manager = new LavendeManager({
-  sendToShard: (guildId, payload) => {
-    client.guilds.cache.get(guildId)?.shard?.send(payload);
-  },
-  client: {
-    id: 'YOUR_BOT_CLIENT_ID'
-  }
-});
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
+let manager = null;
 
 client.once('ready', () => {
-  console.log('Bot is ready!');
-  manager.init({ id: client.user.id, username: client.user.username });
-});
-
-client.on('raw', (packet) => {
-  manager.sendRawData(packet);
-});
-
-client.on('messageCreate', async (message) => {
-  if (message.content === '!play') {
-    const player = manager.createPlayer({
-      guildId: message.guildId,
-      voiceChannelId: message.member.voice.channelId,
-      textChannelId: message.channelId
+    manager = new LavendeManager({
+        sendToShard: (guildId, payload) => {
+            client.guilds.cache.get(guildId)?.shard?.send(payload);
+        },
+        client: { id: client.user.id, username: client.user.username }
     });
-
-    const result = await player.search('your song query', message.author);
-    player.queue.add(result.tracks[0]);
-    
-    await player.connect();
-    await player.play();
-  }
+    manager.init();
 });
 
-client.login('YOUR_BOT_TOKEN');
-```
+// Pass raw socket events to Lavende to establish the Voice connection
+client.on('raw', (packet) => {
+    if (manager) manager.sendRawData(packet);
+});
 
-### Python
-
-```python
-import asyncio
-import discord
-from lavende import LavendeManager, load
-
-client = discord.Client(intents=discord.Intents.all())
-
-def send_to_shard(guild_id: str, payload: dict):
-    guild = client.get_guild(int(guild_id))
-    if guild:
-        asyncio.create_task(guild.shard.ws.send_as_json(payload))
-
-manager = LavendeManager(
-    send_to_shard=send_to_shard,
-    client={"id": "YOUR_BOT_CLIENT_ID"}
-)
-
-@client.event
-async def on_ready():
-    print(f'Bot is ready as {client.user}')
-    manager.init({"id": str(client.user.id), "username": client.user.name})
-
-@client.event
-async def on_raw_dispatch(packet):
-    manager.send_raw_data(packet)
-
-@client.event
-async def on_message(message):
-    if message.content == '!play':
-        player = manager.create_player({
-            "guild_id": str(message.guild.id),
-            "voice_channel_id": str(message.author.voice.channel.id),
-            "text_channel_id": str(message.channel.id)
-        })
-        
-        result = await player.search('your song query', message.author)
-        player.queue.add(result["tracks"][0])
-        
-        await player.connect()
-        await player.play()
-
-client.run('YOUR_BOT_TOKEN')
+client.login("token");
 ```
 
 ## Documentation
 
-### Manager
+Extensive documentation detailing the Rust architecture, the `LavendeManager`, `Player`, and `Filters` can be found in our official documentation directory:
 
-**Node.js:**
-```javascript
-const manager = new LavendeManager({
-  sendToShard: (guildId, payload) => void,
-  client: { id: string, username?: string }
-});
+- [x] [**Read the Lavende Documentation**](./docs/README.md)
 
-manager.init(clientData);
-manager.createPlayer(options);
-manager.destroyPlayer(guildId);
-```
+## Examples
 
-**Python:**
-```python
-manager = LavendeManager(
-    send_to_shard=lambda guild_id, payload: None,
-    client={"id": "...", "username": "..."}
-)
+The best way to understand how to build a bot with Lavende is to analyze the official boilerplate examples:
 
-manager.init(client_data)
-manager.create_player(options)
-manager.destroy_player(guild_id)
-```
-
-### Player
-
-**Node.js:**
-```javascript
-const player = manager.createPlayer({
-  guildId: string,
-  voiceChannelId: string,
-  textChannelId?: string,
-  volume?: number,
-  selfDeaf?: boolean
-});
-
-await player.play(options?);
-await player.pause(pauseState?);
-await player.resume();
-await player.stop();
-await player.skip();
-await player.seek(positionMs);
-await player.setVolume(volume);
-
-player.queue.add(track);
-player.queue.remove(index);
-player.queue.clear();
-player.queue.shuffle();
-
-await player.filterManager.setVolume(volume);
-await player.filterManager.setSpeed(speed);
-await player.filterManager.setPitch(pitch);
-await player.filterManager.setAudioOutput('mono' | 'stereo' | 'left' | 'right');
-await player.filterManager.toggleRotation();
-await player.filterManager.resetFilters();
-
-const result = await player.search(query, requester);
-```
-
-**Python:**
-```python
-player = manager.create_player({
-    "guild_id": "...",
-    "voice_channel_id": "...",
-    "text_channel_id": "...",
-    "volume": 100,
-    "self_deaf": True
-})
-
-await player.play(options)
-await player.pause(pause_state)
-await player.resume()
-await player.stop()
-await player.skip()
-await player.seek(position_ms)
-await player.set_volume(volume)
-
-player.queue.add(track)
-player.queue.remove(index)
-player.queue.clear()
-player.queue.shuffle()
-
-await player.filter_manager.set_volume(volume)
-await player.filter_manager.set_speed(speed)
-await player.filter_manager.set_pitch(pitch)
-await player.filter_manager.set_audio_output('mono')
-await player.filter_manager.toggle_rotation()
-await player.filter_manager.reset_filters()
-
-result = await player.search(query, requester)
-```
-
-### Events
-
-**Node.js:**
-```javascript
-player.on('trackStart', (player, track) => {});
-player.on('trackEnd', (player, track, reason) => {});
-player.on('queueEnd', (player) => {});
-player.on('error', (player, error) => {});
-player.on('position', (player, position) => {});
-```
-
-**Python:**
-```python
-player.on('track_start', lambda p, t: print(f'Track started: {t}'))
-player.on('track_end', lambda p, t, r: print(f'Track ended: {r}'))
-player.on('queue_end', lambda p: print('Queue ended'))
-player.on('error', lambda p, e: print(f'Error: {e}'))
-player.on('position', lambda p, pos: print(f'Position: {pos}'))
-```
-
-## Supported Sources
-
-- YouTube / YouTube Music
-- Spotify
-- SoundCloud
-- Apple Music
-- Deezer
-- Tidal
-- JioSaavn
-- Bandcamp
-- Mixcloud
-- Twitch
-- And many more!
-
-## Audio Filters
-
-- Volume Control
-- Equalizer (15 bands)
-- Timescale (speed, pitch, rate)
-- Rotation (3D audio)
-- Tremolo
-- Vibrato
-- Distortion
-- Channel Mix
-- Karaoke
-- Low Pass / High Pass
-- Reverb
-- Echo
-- Chorus
-- Compressor
-- And more!
-
-## Advanced Configuration
-
-**IMPORTANT:** You must create a `source.json` file in your project root directory to run your bot. This file configures which audio sources are enabled and their settings.
-
-Create a `source.json` file in your project root with the following configuration:
-
-```json
-{
-  "sources": {
-    "youtube": {
-      "enabled": true,
-      "clients": {
-        "search": [
-          "TVHTML5_SIMPLY",
-          "MUSIC_ANDROID",
-          "ANDROID",
-          "WEB"
-        ],
-        "playback": [
-          "ANDROID_VR",
-          "TV_CAST",
-          "WEB_EMBEDDED",
-          "TV",
-          "WEB",
-          "IOS",
-          "MWEB"
-        ],
-        "resolve": [
-          "TVHTML5_SIMPLY",
-          "TVHTML5_UNPLUGGED",
-          "WEB",
-          "MWEB",
-          "IOS",
-          "ANDROID"
-        ]
-      },
-      "cipher": {
-        "url": "https://cipher.kikkia.dev/api",
-        "token": null
-      }
-    },
-    "spotify": {
-      "enabled": false,
-      "client_id": "YOUR_SPOTIFY_CLIENT_ID",
-      "client_secret": "YOUR_SPOTIFY_CLIENT_SECRET"
-    },
-    "soundcloud": {
-      "enabled": true,
-      "client_id": null
-    },
-    "applemusic": {
-      "enabled": true,
-      "country_code": "us"
-    },
-    "deezer": {
-      "enabled": true
-    },
-    "jiosaavn": {
-      "enabled": true
-    },
-    "http": {
-      "enabled": true
-    },
-    "local": {
-      "enabled": false
-    }
-  }
-}
-```
-
-**Note:** 
-- The `source.json` file is **required** for the bot to work
-- Enable/disable sources by setting `"enabled": true` or `"enabled": false`
-- For Spotify, you need to provide your own API credentials from [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
-- For full configuration options, see the example file in the package
-
-
-
-## Building from Source
-
-```bash
-npm install
-npm run build
-npm run build:debug
-```
+- [x] [Node.js / TypeScript Bot](./_examples/node/)
+- [x] [Python Bot](./_examples/python/)
+- [x] [Golang Bot](./_examples/golang/)
+- [x] [Rust Bot](./_examples/rust/)
 
 ## License
 
-Licensed under the Apache License, Version 2.0 - see [LICENSE](LICENSE) file for details.
-
-## Contributing
-
-Contributions are welcome! Please open an issue or PR.
-
-## Acknowledgements
-
-This project is a personal hobby and learning endeavor. It is not intended to compete with, criticize, or harm any existing projects. We have great respect for the work done by the teams behind [Lavalink](https://github.com/lavalink-devs/Lavalink), [NodeLink](https://github.com/PerformanC/NodeLink), and [lavalink-client](https://github.com/tomato6966/lavalink-client), which have been instrumental in the Discord music bot ecosystem. If you find this project useful, feel free to use it. If not, that's perfectly fine too.
-
-Built using:
-- [Lavalink](https://github.com/lavalink-devs/Lavalink) - For inspiration and protocol design
-- [NodeLink](https://github.com/PerformanC/NodeLink) - For additional inspiration
-- [lavalink-client](https://github.com/tomato6966/lavalink-client) - For client implementation inspiration
-- [napi-rs](https://napi.rs/) - Rust bindings for Node.js
-- [symphonia](https://github.com/pdm-project/symphonia) - Pure Rust audio decoding
-- [audiopus](https://github.com/discord/opus) - Opus encoding
-- [tokio](https://tokio.rs/) - Async runtime
-
----
-
-Made by Debauchery Party
+Distributed under the [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/debaucheryparty/lavende/blob/master/LICENSE). See LICENSE for more information.
