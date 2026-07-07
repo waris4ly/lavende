@@ -16,7 +16,7 @@ from lavende.constants import (
     SOURCE_LINKS_REGEXES,
 )
 
-__version__ = "0.1.14"
+__version__ = "0.1.15"
 
 
 class TrackInfo:
