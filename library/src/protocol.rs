@@ -454,12 +454,12 @@ pub mod events {
         #[serde(rename = "event")]
         Event {
             #[serde(flatten)]
-            event: Box<RustalinkEvent>,
+            event: Box<LavendeEvent>,
         },
     }
     #[derive(Debug, Serialize)]
     #[serde(tag = "type", rename_all = "camelCase")]
-    pub enum RustalinkEvent {
+    pub enum LavendeEvent {
         #[serde(rename = "TrackStartEvent")]
         TrackStart {
             #[serde(rename = "guildId")]
@@ -492,7 +492,7 @@ pub mod events {
         LyricsFound {
             #[serde(rename = "guildId")]
             guild_id: crate::common::types::GuildId,
-            lyrics: super::models::RustalinkLyrics,
+            lyrics: super::models::LavendeLyrics,
         },
         #[serde(rename = "LyricsNotFoundEvent")]
         LyricsNotFound {
@@ -504,7 +504,7 @@ pub mod events {
             #[serde(rename = "guildId")]
             guild_id: crate::common::types::GuildId,
             line_index: i32,
-            line: super::models::RustalinkLyricsLine,
+            line: super::models::LavendeLyricsLine,
             skipped: bool,
         },
         #[serde(rename = "WebSocketClosedEvent")]
@@ -613,16 +613,16 @@ pub mod models {
     }
     #[derive(Serialize, Deserialize, Debug, Clone)]
     #[serde(rename_all = "camelCase")]
-    pub struct RustalinkLyrics {
+    pub struct LavendeLyrics {
         pub source_name: String,
         pub provider: Option<String>,
         pub text: Option<String>,
-        pub lines: Option<Vec<RustalinkLyricsLine>>,
+        pub lines: Option<Vec<LavendeLyricsLine>>,
         pub plugin: serde_json::Value,
     }
     #[derive(Serialize, Deserialize, Debug, Clone)]
     #[serde(rename_all = "camelCase")]
-    pub struct RustalinkLyricsLine {
+    pub struct LavendeLyricsLine {
         pub timestamp: u64,
         pub duration: Option<u64>,
         pub line: String,

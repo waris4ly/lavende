@@ -10,7 +10,7 @@ pub mod errors {
     }
     #[derive(Debug, Serialize)]
     #[serde(rename_all = "camelCase")]
-    pub struct RustalinkError {
+    pub struct LavendeError {
         pub timestamp: u64,
         pub status: u16,
         pub error: String,
@@ -19,7 +19,7 @@ pub mod errors {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub trace: Option<String>,
     }
-    impl RustalinkError {
+    impl LavendeError {
         pub fn bad_request(message: impl Into<String>, path: impl Into<String>) -> Self {
             Self::new(400, "Bad Request", message, path)
         }
@@ -490,7 +490,7 @@ pub mod logger {
             let stem = base
                 .file_stem()
                 .and_then(|s| s.to_str())
-                .unwrap_or("rustalink");
+                .unwrap_or("lavende");
             let dir: PathBuf = base.parent().unwrap_or(Path::new(".")).into();
             dir.join(format!("{stem}-{date}.log"))
                 .to_string_lossy()
@@ -580,7 +580,7 @@ pub mod logger {
                 let stem = base
                     .file_stem()
                     .and_then(|s| s.to_str())
-                    .unwrap_or("rustalink");
+                    .unwrap_or("lavende");
                 let max_files = self.max_files as usize;
                 let mut log_files: Vec<std::path::PathBuf> = match std::fs::read_dir(dir) {
                     Ok(entries) => entries
@@ -779,12 +779,12 @@ pub mod logger {
             }
             #[test]
             fn test_resolve_path_no_rotate() {
-                let p = resolve_path("./logs/rustalink.log", false, "2026-03-13");
-                assert_eq!(p, "./logs/rustalink.log");
+                let p = resolve_path("./logs/lavende.log", false, "2026-03-13");
+                assert_eq!(p, "./logs/lavende.log");
             }
             #[test]
             fn test_resolve_path_rotate() {
-                let p = resolve_path("./logs/rustalink.log", true, "2026-03-13");
+                let p = resolve_path("./logs/lavende.log", true, "2026-03-13");
                 assert!(p.contains("2026-03-13"));
                 assert!(p.ends_with(".log"));
             }

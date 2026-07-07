@@ -1347,7 +1347,7 @@ pub mod session {
         audio::{Mixer, filters::FilterChain},
         common::types::{ChannelId, GuildId, SessionId, Shared, UserId},
         gateway::constants::VOICE_GATEWAY_VERSION,
-        protocol::RustalinkEvent,
+        protocol::LavendeEvent,
     };
     use futures::{SinkExt, StreamExt};
     use std::sync::{
@@ -1368,7 +1368,7 @@ pub mod session {
         pub mixer: Shared<Mixer>,
         pub filter_chain: Shared<FilterChain>,
         pub ping: Arc<AtomicI64>,
-        event_tx: Option<UnboundedSender<RustalinkEvent>>,
+        event_tx: Option<UnboundedSender<LavendeEvent>>,
         pub frames_sent: Arc<std::sync::atomic::AtomicU64>,
         pub frames_nulled: Arc<std::sync::atomic::AtomicU64>,
         pub udp_socket: Shared<Option<Arc<tokio::net::UdpSocket>>>,
@@ -1386,7 +1386,7 @@ pub mod session {
         pub mixer: Shared<Mixer>,
         pub filter_chain: Shared<FilterChain>,
         pub ping: Arc<AtomicI64>,
-        pub event_tx: Option<UnboundedSender<RustalinkEvent>>,
+        pub event_tx: Option<UnboundedSender<LavendeEvent>>,
         pub frames_sent: Arc<std::sync::atomic::AtomicU64>,
         pub frames_nulled: Arc<std::sync::atomic::AtomicU64>,
     }
@@ -1620,7 +1620,7 @@ pub mod session {
         }
         fn emit_close(&self, code: u16, reason: String) {
             if let Some(tx) = &self.event_tx {
-                let _ = tx.send(RustalinkEvent::WebSocketClosed {
+                let _ = tx.send(LavendeEvent::WebSocketClosed {
                     guild_id: self.guild_id.clone(),
                     code,
                     reason,

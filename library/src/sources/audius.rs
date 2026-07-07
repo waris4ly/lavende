@@ -89,7 +89,7 @@ impl AudiusSource {
         let config = config.unwrap_or_default();
         Ok(Self {
             client,
-            app_name: config.app_name.unwrap_or_else(|| "Rustalink".to_owned()),
+            app_name: config.app_name.unwrap_or_else(|| "Lavende".to_owned()),
             search_limit: config.search_limit,
             playlist_load_limit: config.playlist_load_limit,
             album_load_limit: config.album_load_limit,
