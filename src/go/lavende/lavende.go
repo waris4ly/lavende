@@ -12,6 +12,8 @@ package lavende
 extern void goSendToShard(char* guildId, char* payloadJson);
 extern void goOnEvent(char* eventJson);
 
+void lavende_set_config_path(const char* path);
+
 static void c_send_to_shard(const char* guild_id, const char* payload_json) {
     goSendToShard((char*)guild_id, (char*)payload_json);
 }
@@ -36,6 +38,16 @@ import (
 	"sync"
 	"unsafe"
 )
+
+func SetConfigPath(path string) {
+	if path == "" {
+		C.lavende_set_config_path(nil)
+	} else {
+		cPath := C.CString(path)
+		defer C.free(unsafe.Pointer(cPath))
+		C.lavende_set_config_path(cPath)
+	}
+}
 
 var (
 	sendToShardFunc func(guildId string, payload json.RawMessage)

@@ -4,6 +4,11 @@ use lavende_core;
 use napi_derive::napi;
 
 #[napi]
+pub fn set_config_path(path: Option<String>) {
+    lavende_core::set_config_path(path);
+}
+
+#[napi]
 pub async fn resolve_jiosaavn(url_or_token: String) -> napi::Result<String> {
     lavende_core::resolve_jiosaavn(url_or_token)
         .await

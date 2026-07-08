@@ -17,6 +17,7 @@ Lavende relies on your Discord client to handle WebSocket communication. You mus
 | :-------------- | :--------------------------------- | :------- | :---------------------------------------------------------------------- |
 | `send_to_shard` | `Callable[[str, dict], Coroutine]` | Yes      | An async function that routes a payload to the correct WebSocket shard. |
 | `client`        | `Dict[str, str]`                   | Yes      | A dictionary containing `"id"` and `"username"` of your bot.            |
+| `config_path`   | `str`                              | No       | Path to custom source configuration file. Defaults to `source.json`.    |
 
 ### Example Setup
 
@@ -40,6 +41,7 @@ async def send_to_shard(guild_id: str, payload: dict):
 async def on_ready():
     global manager
     manager = LavendeManager(
+        config_path="./config/lavende.json",
         send_to_shard=send_to_shard,
         client={
             "id": str(bot.user.id),

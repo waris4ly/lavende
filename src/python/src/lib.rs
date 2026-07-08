@@ -8,7 +8,13 @@ use player::PyPlayer;
 fn _lavende(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyPlayer>()?;
     m.add_function(wrap_pyfunction!(load, m)?)?;
+    m.add_function(wrap_pyfunction!(set_config_path, m)?)?;
     Ok(())
+}
+
+#[pyfunction]
+fn set_config_path(path: Option<String>) {
+    lavende_core::set_config_path(path);
 }
 
 #[pyfunction]

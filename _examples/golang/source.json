@@ -66,7 +66,115 @@
       "album_page_load_concurrency": 5
     },
     "deezer": {
-      "enabled": true
+      "enabled": false,
+      "arls": null,
+      "master_decryption_key": null
+    },
+    "tidal": {
+      "enabled": false,
+      "country_code": "us",
+      "quality": "HIGH",
+      "refresh_token": null,
+      "playlist_load_limit": 50,
+      "album_load_limit": 50,
+      "artist_load_limit": 20
+    },
+    "yandexmusic": {
+      "enabled": false,
+      "access_token": null,
+      "search_limit": 10,
+      "playlist_load_limit": 6,
+      "album_load_limit": 6,
+      "artist_load_limit": 6
+    },
+    "vkmusic": {
+      "enabled": false,
+      "user_token": null,
+      "user_cookie": null,
+      "search_limit": 10,
+      "playlist_load_limit": 1,
+      "artist_load_limit": 1,
+      "recommendations_load_limit": 10
+    },
+    "netease": {
+      "enabled": false,
+      "search_limit": 10
+    },
+    "amazonmusic": {
+      "enabled": false,
+      "search_limit": 3
+    },
+    "gaana": {
+      "enabled": false,
+      "search_limit": 10,
+      "playlist_load_limit": 50,
+      "album_load_limit": 50,
+      "artist_load_limit": 20
+    },
+    "anghami": {
+      "enabled": false,
+      "search_limit": 10
+    },
+    "audiomack": {
+      "enabled": false,
+      "search_limit": 20
+    },
+    "audius": {
+      "enabled": false,
+      "search_limit": 10,
+      "playlist_load_limit": 100,
+      "album_load_limit": 100
+    },
+    "bandcamp": {
+      "enabled": false,
+      "search_limit": 10
+    },
+    "mixcloud": {
+      "enabled": false,
+      "search_limit": 10
+    },
+    "pandora": {
+      "enabled": false,
+      "search_limit": 10,
+      "playlist_load_limit": 100
+    },
+    "qobuz": {
+      "enabled": false,
+      "user_token": null,
+      "app_id": null,
+      "app_secret": null,
+      "search_limit": 10,
+      "playlist_load_limit": 100,
+      "album_load_limit": 50,
+      "artist_load_limit": 20
+    },
+    "shazam": {
+      "enabled": false,
+      "search_limit": 10
+    },
+    "lastfm": {
+      "enabled": false,
+      "api_key": null,
+      "search_limit": 10
+    },
+    "reddit": {
+      "enabled": false
+    },
+    "twitch": {
+      "enabled": false,
+      "client_id": null
+    },
+    "flowery": {
+      "enabled": false,
+      "voice": "Salli",
+      "translate": false,
+      "silence": 0,
+      "speed": 1.0,
+      "enforce_config": false
+    },
+    "google_tts": {
+      "enabled": false,
+      "language": "en-US"
     },
     "http": {
       "enabled": true

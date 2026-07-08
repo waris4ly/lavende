@@ -18,6 +18,7 @@ Because Lavende leverages standard Discord voice protocol principles, you must p
 | `SendToShard`     | `func(guildId string, payload interface{})` | Yes      | A function mapping a Guild ID to the corresponding WebSocket shard for writing JSON payloads. |
 | `Client.Id`       | `string`                                    | Yes      | Your Bot's Application ID.                                                                    |
 | `Client.Username` | `*string`                                   | Yes      | Your Bot's Username.                                                                          |
+| `ConfigPath`      | `*string`                                   | No       | Path to custom source configuration file. Defaults to `source.json`.                          |
 
 ### Example Setup (Disgo)
 
@@ -61,11 +62,12 @@ func main() {
 func onReady(event *events.Ready) {
     log.Printf("Logged in as %s", event.User.Username)
 
+    configPath := "./config/lavende.json"
     opts := lavende.LavendeManagerOptions{
         SendToShard: func(guildId string, payload interface{}) {
-            // Disgo automatically handles sending to the gateway
             _ = client.Gateway().Send(context.Background(), payload)
         },
+        ConfigPath: &configPath,
     }
     opts.Client.Id = event.User.ID.String()
     username := event.User.Username

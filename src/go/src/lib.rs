@@ -22,6 +22,21 @@ fn string_to_cstr(s: String) -> *mut c_char {
 }
 
 #[no_mangle]
+pub extern "C" fn lavende_set_config_path(path: *const c_char) {
+    let config_path = if path.is_null() {
+        None
+    } else {
+        let s = cstr_to_string(path);
+        if s.is_empty() {
+            None
+        } else {
+            Some(s)
+        }
+    };
+    lavende_core::set_config_path(config_path);
+}
+
+#[no_mangle]
 pub extern "C" fn lavende_free_string(s: *mut c_char) {
     if !s.is_null() {
         unsafe {

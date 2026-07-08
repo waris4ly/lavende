@@ -17,14 +17,27 @@ use config::AppConfig;
 use sources::manager::SourceManager;
 use std::fs;
 use std::path::Path;
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 
-static SOURCE_MANAGER: OnceLock<SourceManager> = OnceLock::new();
+static SOURCE_MANAGER: OnceLock<Mutex<Option<SourceManager>>> = OnceLock::new();
+static CONFIG_PATH: Mutex<Option<String>> = Mutex::new(None);
 
-pub fn get_source_manager() -> &'static SourceManager {
+pub fn set_config_path(path: Option<String>) {
+    if let Ok(mut config_path) = CONFIG_PATH.lock() {
+        *config_path = path;
+    }
+}
+
+pub fn get_source_manager() -> &'static Mutex<Option<SourceManager>> {
     SOURCE_MANAGER.get_or_init(|| {
+        let config_file = CONFIG_PATH.lock()
+            .ok()
+            .and_then(|p| p.clone())
+            .unwrap_or_else(|| "source.json".to_string());
+        
         let mut config = AppConfig::default();
-        let path = Path::new("source.json");
+        let path = Path::new(&config_file);
+        
         if path.exists() {
             if let Ok(raw) = fs::read_to_string(path) {
                 if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(&raw) {
@@ -46,11 +59,12 @@ pub fn get_source_manager() -> &'static SourceManager {
                 }
             }
         } else {
-            println!("Warning: source.json not found in current directory. Using default source configuration.");
+            println!("Warning: {} not found in current directory. Using default source configuration.", config_file);
         }
+        
         let logging_cfg = config.logging.clone().unwrap_or_default();
         common::logger::init(&logging_cfg);
-        SourceManager::new(&config)
+        Mutex::new(Some(SourceManager::new(&config)))
     })
 }
 
@@ -63,7 +77,8 @@ pub async fn resolve_youtube(url_or_id: String) -> Result<String, String> {
 }
 
 pub async fn load(identifier: String) -> Result<String, String> {
-    let sm = get_source_manager();
+    let sm_guard = get_source_manager().lock().map_err(|e| e.to_string())?;
+    let sm = sm_guard.as_ref().ok_or("SourceManager not initialized")?;
     let res = sm.load(&identifier, None).await;
     serde_json::to_string(&res).map_err(|e| e.to_string())
 }

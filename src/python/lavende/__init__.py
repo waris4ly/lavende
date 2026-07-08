@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
 from lavende._lavende import Player as _RustPlayer
 from lavende._lavende import load as _rust_load
+from lavende._lavende import set_config_path as _rust_set_config_path
 from lavende.constants import (
     DebugEvents,
     DestroyReasons,
@@ -497,12 +498,14 @@ class Player:
 
 
 class LavendeManager:
-    def __init__(self, send_to_shard: Callable, client: Dict[str, str]):
+    def __init__(self, send_to_shard: Callable, client: Dict[str, str], config_path: Optional[str] = None):
         self.players: Dict[str, Player] = {}
         self.send_to_shard = send_to_shard
         self.client = client
         self.node_manager: Dict[str, Any] = {"nodes": {}}
         self._event_handlers: Dict[str, list] = {}
+        if config_path:
+            _rust_set_config_path(config_path)
 
     def on(self, event: str, handler: Callable) -> None:
         self._event_handlers.setdefault(event, []).append(handler)

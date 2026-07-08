@@ -564,6 +564,7 @@ export interface LavendeManagerOptions {
     id: string;
     username?: string;
   };
+  configPath?: string;
 }
 
 export class LavendeManager extends EventEmitter {
@@ -578,6 +579,9 @@ export class LavendeManager extends EventEmitter {
     super();
     this.sendToShard = options.sendToShard;
     this.client = options.client;
+    if (options.configPath) {
+      native.setConfigPath(options.configPath);
+    }
   }
 
   public init(clientData?: { id: string; username?: string }): void {

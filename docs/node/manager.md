@@ -17,6 +17,7 @@ Because Lavende abstracts away the complexities of WebSocket communication, you 
 | :------------ | :---------------------------------------- | :------- | :------------------------------------------------------------------------ |
 | `sendToShard` | `(guildId: string, payload: any) => void` | Yes      | A function that routes a raw JSON payload to the correct WebSocket shard. |
 | `client`      | `{ id: string, username: string }`        | Yes      | An object containing `{ id, username }` of your bot.                      |
+| `configPath`  | `string`                                  | No       | Path to custom source configuration file. Defaults to `source.json`.      |
 
 ### Example Setup
 
@@ -44,8 +45,8 @@ client.once("ready", () => {
   if (!client.user) return;
 
   manager = new LavendeManager({
+    configPath: "./config/lavende.json",
     sendToShard: (guildId: string, payload: any) => {
-      // Find the correct shard for this guild and dispatch the payload
       client.guilds.cache.get(guildId)?.shard?.send(payload);
     },
     client: {
@@ -81,6 +82,7 @@ let manager = null;
 
 client.once("ready", () => {
   manager = new LavendeManager({
+    configPath: "./config/lavende.json",
     sendToShard: (guildId, payload) => {
       client.guilds.cache.get(guildId)?.shard?.send(payload);
     },

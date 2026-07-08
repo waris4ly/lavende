@@ -17,6 +17,7 @@ The manager requires a callback function that routes Discord Gateway payloads to
 | :----------------- | :--------------------------------------------------------- | :------- | :---------------------------------------------------- |
 | `client_id`        | `String`                                                   | Yes      | Your bot's application/client ID.                     |
 | `send_to_shard_fn` | `F: Fn(String, serde_json::Value) + Send + Sync + 'static` | Yes      | A function that routes payloads to Discord's Gateway. |
+| `config_path`      | `Option<String>`                                           | No       | Path to custom source configuration file. Defaults to `source.json`. |
 
 ### Example Setup
 
@@ -26,11 +27,11 @@ use serde_json::json;
 
 #[tokio::main]
 async fn main() {
+    lavende::set_config_path(Some("./config/lavende.json".to_string()));
+
     let client_id = "YOUR_BOT_CLIENT_ID".to_string();
 
-    // This closure will be called when Lavende needs to send data to Discord
     let send_to_shard = |guild_id: String, payload: serde_json::Value| {
-        // In a real bot, you would send this to your Discord gateway connection
         println!("Sending to guild {}: {:?}", guild_id, payload);
     };
 
