@@ -17,9 +17,9 @@ use config::AppConfig;
 use sources::manager::SourceManager;
 use std::fs;
 use std::path::Path;
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 
-static SOURCE_MANAGER: OnceLock<Mutex<Option<SourceManager>>> = OnceLock::new();
+static SOURCE_MANAGER: OnceLock<Mutex<Option<Arc<SourceManager>>>> = OnceLock::new();
 static CONFIG_PATH: Mutex<Option<String>> = Mutex::new(None);
 
 pub fn set_config_path(path: Option<String>) {
@@ -28,16 +28,17 @@ pub fn set_config_path(path: Option<String>) {
     }
 }
 
-pub fn get_source_manager() -> &'static Mutex<Option<SourceManager>> {
+pub fn get_source_manager() -> &'static Mutex<Option<Arc<SourceManager>>> {
     SOURCE_MANAGER.get_or_init(|| {
-        let config_file = CONFIG_PATH.lock()
+        let config_file = CONFIG_PATH
+            .lock()
             .ok()
             .and_then(|p| p.clone())
             .unwrap_or_else(|| "source.json".to_string());
-        
+
         let mut config = AppConfig::default();
         let path = Path::new(&config_file);
-        
+
         if path.exists() {
             if let Ok(raw) = fs::read_to_string(path) {
                 if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(&raw) {
@@ -59,12 +60,15 @@ pub fn get_source_manager() -> &'static Mutex<Option<SourceManager>> {
                 }
             }
         } else {
-            println!("Warning: {} not found in current directory. Using default source configuration.", config_file);
+            println!(
+                "Warning: {} not found in current directory. Using default source configuration.",
+                config_file
+            );
         }
-        
+
         let logging_cfg = config.logging.clone().unwrap_or_default();
         common::logger::init(&logging_cfg);
-        Mutex::new(Some(SourceManager::new(&config)))
+        Mutex::new(Some(Arc::new(SourceManager::new(&config))))
     })
 }
 
@@ -77,8 +81,13 @@ pub async fn resolve_youtube(url_or_id: String) -> Result<String, String> {
 }
 
 pub async fn load(identifier: String) -> Result<String, String> {
-    let sm_guard = get_source_manager().lock().map_err(|e| e.to_string())?;
-    let sm = sm_guard.as_ref().ok_or("SourceManager not initialized")?;
-    let res = sm.load(&identifier, None).await;
+    let sm_arc = {
+        let sm_guard = get_source_manager().lock().map_err(|e| e.to_string())?;
+        sm_guard
+            .as_ref()
+            .ok_or("SourceManager not initialized")?
+            .clone()
+    };
+    let res = sm_arc.load(&identifier, None).await;
     serde_json::to_string(&res).map_err(|e| e.to_string())
 }

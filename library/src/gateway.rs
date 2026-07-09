@@ -15,7 +15,7 @@ pub mod constants {
     pub const PCM_FRAME_SAMPLES: usize = 960;
     pub const MAX_OPUS_FRAME_SIZE: usize = 4000;
     pub const SILENCE_FRAME: [u8; 3] = [0xf8, 0xff, 0xfe];
-    pub const MAX_SILENCE_FRAMES: u32 = 5;
+    pub const MAX_SILENCE_FRAMES: u32 = 25;
     pub const UDP_PACKET_BUF_CAPACITY: usize = 1500;
     pub const DISCOVERY_PACKET_SIZE: usize = 74;
     pub const IP_DISCOVERY_TIMEOUT_SECS: u64 = 2;
@@ -557,7 +557,7 @@ pub mod session {
             }
             async fn run(&mut self, encoder: &mut Encoder) -> Result<(), GatewayError> {
                 let mut interval = tokio::time::interval(Duration::from_millis(FRAME_DURATION_MS));
-                interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+                interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Burst);
                 let mut pcm = vec![0i16; PCM_FRAME_SAMPLES * 2];
                 let mut opus = vec![0u8; MAX_OPUS_FRAME_SIZE];
                 let mut ts_pcm = vec![0i16; PCM_FRAME_SAMPLES * 2];
@@ -649,6 +649,11 @@ pub mod session {
                         {
                             return self.send_silence().await;
                         }
+                        self.transport.rtp.timestamp = self
+                            .transport
+                            .rtp
+                            .timestamp
+                            .wrapping_add(crate::gateway::constants::RTP_TIMESTAMP_STEP);
                         return Ok(());
                     }
                     let has_ts = {

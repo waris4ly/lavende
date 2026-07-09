@@ -261,9 +261,12 @@ impl Player {
             mixer_guard.stop_all();
         }
         self.paused.store(false, Ordering::Release);
-        let sm = crate::get_source_manager();
-        let player_config = sm.player_config.clone();
-        let playable_track = match load_and_resolve_first_result(sm, &url).await {
+        let sm_arc = {
+            let guard = crate::get_source_manager().lock().unwrap();
+            guard.as_ref().unwrap().clone()
+        };
+        let player_config = sm_arc.player_config.clone();
+        let playable_track = match load_and_resolve_first_result(&sm_arc, &url).await {
             Ok(pt) => pt,
             Err(e) => {
                 events.send("error", json!({ "message": e }));
