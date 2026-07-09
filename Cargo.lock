@@ -1609,6 +1609,7 @@ version = "1.0.0"
 dependencies = [
  "cbindgen",
  "lavende",
+ "lavende-core",
  "libc",
  "once_cell",
  "serde_json",
