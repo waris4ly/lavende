@@ -119,7 +119,15 @@ pub mod controller {
                 self.process_frame(&mut frame);
                 Ok(Some(frame))
             } else if self.decoder_done {
-                Err(AudioError::DecoderFinished)
+                if !self.pending_pcm.is_empty() {
+                    let mut frame = acquire_buffer(FRAME_SIZE_SAMPLES);
+                    frame.extend(self.pending_pcm.drain(..));
+                    frame.resize(FRAME_SIZE_SAMPLES, 0);
+                    self.process_frame(&mut frame);
+                    Ok(Some(frame))
+                } else {
+                    Err(AudioError::DecoderFinished)
+                }
             } else {
                 Ok(None)
             }
