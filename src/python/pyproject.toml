@@ -4,10 +4,10 @@ build-backend = "maturin"
 
 [project]
 name = "lavende"
-version = "1.0.3"
+version = "1.0.4"
 description = "In-process Discord voice connection and playback engine"
 requires-python = ">=3.8"
-license = { text = "Apache-2.0" }
+license = { text = "GPL-3.0" }
 authors = [
     { name = "Debauchery Party" }
 ]
@@ -15,7 +15,7 @@ keywords = ["discord", "voice", "audio", "music", "lavalink", "bot"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",

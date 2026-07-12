@@ -49,14 +49,15 @@ Navigate to your language of choice to explore detailed integration guides, API 
 
 ## Acknowledgements
 
-This project is an independent open-source initiative. It is not intended to compete with, criticize, or harm any existing projects. We have great respect for the work done by the teams behind [Lavalink](https://github.com/lavalink-devs/Lavalink), [NodeLink](https://github.com/PerformanC/NodeLink), and [lavalink-client](https://github.com/tomato6966/lavalink-client), which have been instrumental in the Discord music bot ecosystem. If you find this project useful, feel free to use it. If not, that's perfectly fine too.
+This project is an independent open-source initiative. It is not intended to compete with, criticize, or harm any existing projects. We have great respect for the work done by the teams behind [Lavalink](https://github.com/lavalink-devs/Lavalink), [NodeLink](https://github.com/PerformanC/NodeLink), and [lavalink-client](https://github.com/tomato6966/lavalink-client), which have been instrumental in the Discord music bot ecosystem.
+
+**Credits:**
+- [Lavalink](https://github.com/lavalink-devs/Lavalink) - For inspiration and protocol design
+- [NodeLink](https://github.com/PerformanC/NodeLink)- For source code reference, all due credits to the NodeLink team
+- [lavalink-client](https://github.com/tomato6966/lavalink-client) - We have ported and used this in Lavende, full credits to the original authors
 
 Built using:
 
-- [Lavalink](https://github.com/lavalink-devs/Lavalink) - For inspiration and protocol design
-- [NodeLink](https://github.com/PerformanC/NodeLink) - For additional inspiration
-- [lavalink-client](https://github.com/tomato6966/lavalink-client) - For client implementation inspiration
-- [napi-rs](https://napi.rs/) - Rust bindings for Node.js
 - [symphonia](https://github.com/pdm-project/symphonia) - Pure Rust audio decoding
 - [audiopus](https://github.com/discord/opus) - Opus encoding
 - [tokio](https://tokio.rs/) - Async runtime

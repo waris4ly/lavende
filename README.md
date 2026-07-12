@@ -2,7 +2,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/lavende.svg?color=3775a9)](https://pypi.org/project/lavende/)
 [![Crates.io](https://img.shields.io/crates/v/lavende.svg?color=fc8d62)](https://crates.io/crates/lavende)
 [![Go Reference](https://pkg.go.dev/badge/github.com/debaucheryparty/lavende.svg)](https://pkg.go.dev/github.com/debaucheryparty/lavende)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/debaucheryparty/lavende/blob/master/LICENSE)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/debaucheryparty/lavende/blob/master/LICENSE)
 [![Release](https://img.shields.io/github/v/tag/debaucheryparty/lavende?label=release)](https://github.com/debaucheryparty/lavende/releases/latest)
 
 <img align="right" src="/archive/lavende.png" width=192 alt="lavende logo">
@@ -164,4 +164,4 @@ The best way to understand how to build a bot with Lavende is to analyze the off
 
 ## License
 
-Distributed under the [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/debaucheryparty/lavende/blob/master/LICENSE). See LICENSE for more information.
+Distributed under the [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/debaucheryparty/lavende/blob/master/LICENSE). See LICENSE for more information.

@@ -1,11 +1,11 @@
 {
   "name": "lavende",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "In-process Discord voice connection and playback engine",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "author": "Debauchery Party",
-  "license": "Apache-2.0",
+  "license": "GPL-3.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/debaucheryparty/lavende.git"
