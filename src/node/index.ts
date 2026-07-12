@@ -556,6 +556,13 @@ export class Player extends EventEmitter {
   public isPaused(): boolean {
     return this.player.isPaused();
   }
+
+  public async getLyrics(skipTrackSource: boolean = false): Promise<any> {
+    if (!this.queue.current) {
+      throw new Error("No track is currently playing.");
+    }
+    return loadLyrics(this.queue.current.encoded, skipTrackSource);
+  }
 }
 
 export interface LavendeManagerOptions {
@@ -677,6 +684,24 @@ export async function load(
   }
 
   return result;
+}
+
+export async function loadLyrics(encodedTrack: string, skipTrackSource: boolean = false): Promise<any> {
+  try {
+    const res = await native.loadLyrics(encodedTrack, skipTrackSource);
+    return JSON.parse(res);
+  } catch (e) {
+    return null;
+  }
+}
+
+export async function loadLyricsBySearch(title: string, artist: string): Promise<any> {
+  try {
+    const res = await native.loadLyricsBySearch(title, artist);
+    return JSON.parse(res);
+  } catch (e) {
+    return null;
+  }
 }
 
 export class MiniMap<K, V> extends Map<K, V> {

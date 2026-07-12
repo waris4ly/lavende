@@ -349,3 +349,36 @@ pub extern "C" fn lavende_player_search(
     };
     string_to_cstr(json)
 }
+
+#[no_mangle]
+pub extern "C" fn lavende_load_lyrics(
+    encoded_track: *const c_char,
+    skip_track_source: bool,
+) -> *mut c_char {
+    let track_str = cstr_to_string(encoded_track);
+    let result = RUNTIME.block_on(async {
+        lavende_core::load_lyrics(track_str, skip_track_source).await
+    });
+    let s = match result {
+        Ok(res) => res,
+        Err(e) => format!(r#"{{"error":"{}"}}"#, e),
+    };
+    string_to_cstr(s)
+}
+
+#[no_mangle]
+pub extern "C" fn lavende_load_lyrics_by_search(
+    title: *const c_char,
+    artist: *const c_char,
+) -> *mut c_char {
+    let title_str = cstr_to_string(title);
+    let artist_str = cstr_to_string(artist);
+    let result = RUNTIME.block_on(async {
+        lavende_core::load_lyrics_by_search(title_str, artist_str).await
+    });
+    let s = match result {
+        Ok(res) => res,
+        Err(e) => format!(r#"{{"error":"{}"}}"#, e),
+    };
+    string_to_cstr(s)
+}

@@ -6,6 +6,8 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Union
 from lavende._lavende import Player as _RustPlayer
 from lavende._lavende import load as _rust_load
 from lavende._lavende import set_config_path as _rust_set_config_path
+from lavende._lavende import load_lyrics as _rust_load_lyrics
+from lavende._lavende import load_lyrics_by_search as _rust_load_lyrics_by_search
 from lavende.constants import (
     DebugEvents,
     DestroyReasons,
@@ -493,6 +495,11 @@ class Player:
     def is_paused(self) -> bool:
         return self._rust_player.is_paused()
 
+    async def get_lyrics(self, skip_track_source: bool = False) -> Optional[dict]:
+        if not self.queue.current:
+            raise ValueError("No track is currently playing.")
+        return await load_lyrics(self.queue.current.encoded, skip_track_source)
+
     def __repr__(self) -> str:
         return f"Player(guild_id='{self.guild_id}', playing={self.playing})"
 
@@ -589,6 +596,22 @@ async def load(identifier: str, requester: Any = None) -> Dict[str, Any]:
     return result
 
 
+async def load_lyrics(encoded_track: str, skip_track_source: bool = False) -> Optional[dict]:
+    try:
+        res = await _rust_load_lyrics(encoded_track, skip_track_source)
+        return json.loads(res)
+    except Exception:
+        return None
+
+
+async def load_lyrics_by_search(title: str, artist: str) -> Optional[dict]:
+    try:
+        res = await _rust_load_lyrics_by_search(title, artist)
+        return json.loads(res)
+    except Exception:
+        return None
+
+
 __all__ = [
     "Track",
     "TrackInfo",
@@ -599,6 +622,8 @@ __all__ = [
     "LavendePlayer",
     "LavendeManager",
     "load",
+    "load_lyrics",
+    "load_lyrics_by_search",
     "_RustPlayer",
     "DebugEvents",
     "DestroyReasons",

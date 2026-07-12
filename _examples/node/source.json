@@ -194,5 +194,15 @@
     "mirrors": {
       "providers": ["ytsearch:%ISRC%", "ytsearch:%QUERY%", "scsearch:%QUERY%"]
     }
+  },
+  "lyrics": {
+    "youtubemusic": true,
+    "lrclib": true,
+    "genius": false,
+    "deezer": false,
+    "musixmatch": false,
+    "letrasmus": false,
+    "yandex": false,
+    "netease": false
   }
 }

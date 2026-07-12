@@ -407,6 +407,61 @@ client.on("messageCreate", async (message) => {
         new EmbedBuilder().setDescription("Cleared all active filters."),
       ],
     });
+  } else if (command === "lyrics" || command === "ly") {
+    const player = manager.players.get(guildId);
+    if (!player)
+      return message.reply({
+        embeds: [new EmbedBuilder().setDescription("❌ No active player.")],
+      });
+
+    const currentTrack = player.queue.current;
+    if (!currentTrack)
+      return message.reply({
+        embeds: [new EmbedBuilder().setDescription("❌ No track is currently playing.")],
+      });
+
+    const searchMsg = await message.reply({
+      embeds: [
+        new EmbedBuilder().setDescription(
+          `🔍 Searching lyrics for **${currentTrack.info.title}**...`,
+        ),
+      ],
+    });
+
+    try {
+      const lyrics = await player.getLyrics();
+      if (!lyrics) {
+        return searchMsg.edit({
+          embeds: [
+            new EmbedBuilder().setDescription(
+              `❌ No lyrics found for **${currentTrack.info.title}**`,
+            ),
+          ],
+        });
+      }
+
+      let text = lyrics.text;
+      if (text.length > 4000) {
+        text = text.slice(0, 4000) + "\n\n... (truncated)";
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle(`🎶 Lyrics: ${lyrics.name}`)
+        .setAuthor({ name: lyrics.author })
+        .setDescription(text)
+        .setFooter({ text: `Provider: ${lyrics.provider}` })
+        .setColor(0x8a2be2);
+
+      await searchMsg.edit({ embeds: [embed] });
+    } catch (e) {
+      searchMsg.edit({
+        embeds: [
+          new EmbedBuilder().setDescription(
+            `❌ Error fetching lyrics: \`${e.message || e}\``,
+          ),
+        ],
+      });
+    }
   }
 });
 

@@ -640,6 +640,79 @@ func (p *Player) Search(query string, requester interface{}) (*LoadResult, error
 	return res, nil
 }
 
+type LyricsLine struct {
+	Text      string `json:"text"`
+	Timestamp uint64 `json:"timestamp"`
+	Duration  uint64 `json:"duration"`
+}
+
+type LyricsData struct {
+	Name     string        `json:"name"`
+	Author   string        `json:"author"`
+	Provider string        `json:"provider"`
+	Text     string        `json:"text"`
+	Lines    *[]LyricsLine `json:"lines,omitempty"`
+}
+
+func (p *Player) GetLyrics(skipTrackSource bool) (*LyricsData, error) {
+	if p.Queue.Current == nil {
+		return nil, errors.New("no track is currently playing")
+	}
+	return LoadLyrics(p.Queue.Current.Encoded, skipTrackSource)
+}
+
+func LoadLyrics(encodedTrack string, skipTrackSource bool) (*LyricsData, error) {
+	cTrack := C.CString(encodedTrack)
+	defer C.free(unsafe.Pointer(cTrack))
+
+	cRes := C.lavende_load_lyrics(cTrack, C.bool(skipTrackSource))
+	if cRes == nil {
+		return nil, errors.New("no lyrics found")
+	}
+	defer C.lavende_free_string(cRes)
+
+	resStr := C.GoString(cRes)
+	var raw struct {
+		Error *string `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(resStr), &raw); err == nil && raw.Error != nil {
+		return nil, errors.New(*raw.Error)
+	}
+
+	var lyrics LyricsData
+	if err := json.Unmarshal([]byte(resStr), &lyrics); err != nil {
+		return nil, err
+	}
+	return &lyrics, nil
+}
+
+func LoadLyricsBySearch(title string, artist string) (*LyricsData, error) {
+	cTitle := C.CString(title)
+	defer C.free(unsafe.Pointer(cTitle))
+	cArtist := C.CString(artist)
+	defer C.free(unsafe.Pointer(cArtist))
+
+	cRes := C.lavende_load_lyrics_by_search(cTitle, cArtist)
+	if cRes == nil {
+		return nil, errors.New("no lyrics found")
+	}
+	defer C.lavende_free_string(cRes)
+
+	resStr := C.GoString(cRes)
+	var raw struct {
+		Error *string `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(resStr), &raw); err == nil && raw.Error != nil {
+		return nil, errors.New(*raw.Error)
+	}
+
+	var lyrics LyricsData
+	if err := json.Unmarshal([]byte(resStr), &lyrics); err != nil {
+		return nil, err
+	}
+	return &lyrics, nil
+}
+
 type PlayOptions struct {
 	Track  *Track
 	Volume *int

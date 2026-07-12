@@ -2,8 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SourceLinksRegexes = exports.DefaultSources = exports.EQList = exports.audioOutputsData = exports.validSponsorBlocks = exports.DisconnectReasons = exports.DestroyReasons = exports.DebugEvents = exports.MiniMap = exports.LavendePlayer = exports.LavendeManager = exports.Player = exports.FilterManager = exports.Queue = exports.Track = void 0;
 exports.load = load;
+exports.loadLyrics = loadLyrics;
+exports.loadLyricsBySearch = loadLyricsBySearch;
 const events_1 = require("events");
-const native = require('../index.js');
+const native = require("../index.js");
 class Track {
     encoded;
     info;
@@ -28,7 +30,7 @@ class Queue {
     }
     add(track, index) {
         if (Array.isArray(track)) {
-            if (typeof index === 'number') {
+            if (typeof index === "number") {
                 this.tracks.splice(index, 0, ...track);
             }
             else {
@@ -36,7 +38,7 @@ class Queue {
             }
         }
         else {
-            if (typeof index === 'number') {
+            if (typeof index === "number") {
                 this.tracks.splice(index, 0, track);
             }
             else {
@@ -79,7 +81,7 @@ class Queue {
         findTrack: (predicate) => {
             const results = this.utils.filterTracks(predicate);
             return results.length > 0 ? results[0] : null;
-        }
+        },
     };
 }
 exports.Queue = Queue;
@@ -93,7 +95,7 @@ class FilterManager {
         tremolo: false,
         vibrato: false,
         lowPass: false,
-        audioOutput: 'stereo'
+        audioOutput: "stereo",
     };
     constructor(player) {
         this.player = player;
@@ -116,7 +118,7 @@ class FilterManager {
             tremolo: false,
             vibrato: false,
             lowPass: false,
-            audioOutput: 'stereo'
+            audioOutput: "stereo",
         };
         await this.applyPlayerFilters();
         return this;
@@ -128,10 +130,23 @@ class FilterManager {
         return this;
     }
     async setAudioOutput(type) {
-        const mix = type === 'mono' ? { leftToLeft: 0.5, leftToRight: 0.5, rightToLeft: 0.5, rightToRight: 0.5 } :
-            type === 'left' ? { leftToLeft: 1, leftToRight: 0, rightToLeft: 1, rightToRight: 0 } :
-                type === 'right' ? { leftToLeft: 0, leftToRight: 1, rightToLeft: 0, rightToRight: 1 } :
-                    { leftToLeft: 1, leftToRight: 0, rightToLeft: 0, rightToRight: 1 };
+        const mix = type === "mono"
+            ? {
+                leftToLeft: 0.5,
+                leftToRight: 0.5,
+                rightToLeft: 0.5,
+                rightToRight: 0.5,
+            }
+            : type === "left"
+                ? { leftToLeft: 1, leftToRight: 0, rightToLeft: 1, rightToRight: 0 }
+                : type === "right"
+                    ? { leftToLeft: 0, leftToRight: 1, rightToLeft: 0, rightToRight: 1 }
+                    : {
+                        leftToLeft: 1,
+                        leftToRight: 0,
+                        rightToLeft: 0,
+                        rightToRight: 1,
+                    };
         this.data.channelMix = mix;
         this.filters.audioOutput = type;
         await this.applyPlayerFilters();
@@ -198,13 +213,13 @@ class Player extends events_1.EventEmitter {
     volume = 100;
     paused = false;
     playing = false;
-    repeatMode = 'off';
+    repeatMode = "off";
     selfDeaf = true;
     voiceState = {};
     node = {
-        sessionId: 'local-session',
+        sessionId: "local-session",
         _checkForSources: false,
-        _checkForPlugins: false
+        _checkForPlugins: false,
     };
     playOnConnect = false;
     data = {};
@@ -214,7 +229,7 @@ class Player extends events_1.EventEmitter {
         this.guildId = options.guildId;
         this.voiceChannelId = options.voiceChannelId;
         this.textChannelId = options.textChannelId || null;
-        this.volume = typeof options.volume === 'number' ? options.volume : 100;
+        this.volume = typeof options.volume === "number" ? options.volume : 100;
         this.selfDeaf = options.selfDeaf !== false;
         this.player = new native.Player(options.guildId);
         this.queue = new Queue(options.guildId);
@@ -254,7 +269,7 @@ class Player extends events_1.EventEmitter {
             this.playOnConnect = false;
             console.log(`[Player ${this.guildId}] Delayed play handshake completed, starting playback.`);
             process.nextTick(() => {
-                this.play().catch(err => this.emit('error', this, err));
+                this.play().catch((err) => this.emit("error", this, err));
             });
         }
     }
@@ -284,28 +299,28 @@ class Player extends events_1.EventEmitter {
     }
     async destroy(reason) {
         await this.disconnect();
-        this.emit('playerDestroy', this, reason);
+        this.emit("playerDestroy", this, reason);
         this.manager.players.delete(this.guildId);
     }
     async search(query, requester = null) {
-        const searchStr = typeof query === 'string' ? query : query.query;
+        const searchStr = typeof query === "string" ? query : query.query;
         return load(searchStr, requester);
     }
     async play(options) {
         if (options?.track) {
             this.queue.current = options.track;
         }
-        if (typeof options?.volume === 'number') {
+        if (typeof options?.volume === "number") {
             this.volume = options.volume;
         }
-        if (typeof options?.paused === 'boolean') {
+        if (typeof options?.paused === "boolean") {
             this.paused = options.paused;
         }
         if (!this.queue.current) {
             const next = this.queue.tracks.shift();
             if (!next) {
                 this.playing = false;
-                this.emit('queueEnd', this);
+                this.emit("queueEnd", this);
                 return;
             }
             this.queue.current = next;
@@ -330,30 +345,30 @@ class Player extends events_1.EventEmitter {
                 sessionId,
                 token,
                 endpoint,
-                identifier: currentTrack.info.uri
+                identifier: currentTrack.info.uri,
             });
             await this.player.play(this.manager.client.id, this.voiceChannelId, sessionId, token, endpoint, currentTrack.info.uri, (err, eventJson) => {
                 if (err) {
-                    this.emit('error', this, err);
+                    this.emit("error", this, err);
                     return;
                 }
                 try {
                     const event = JSON.parse(eventJson);
                     const type = event.type;
-                    if (type === 'trackStart') {
-                        this.emit('trackStart', this, currentTrack);
+                    if (type === "trackStart") {
+                        this.emit("trackStart", this, currentTrack);
                     }
-                    else if (type === 'trackEnd') {
+                    else if (type === "trackEnd") {
                         this.playing = false;
-                        this.emit('trackEnd', this, currentTrack, event.reason || 'FINISHED');
+                        this.emit("trackEnd", this, currentTrack, event.reason || "FINISHED");
                         this.handleTrackEnd();
                     }
-                    else if (type === 'position') {
-                        this.emit('position', this, event.position);
+                    else if (type === "position") {
+                        this.emit("position", this, event.position);
                     }
                 }
                 catch (parseErr) {
-                    this.emit('error', this, parseErr);
+                    this.emit("error", this, parseErr);
                 }
             });
             if (this.paused) {
@@ -362,17 +377,17 @@ class Player extends events_1.EventEmitter {
         }
         catch (err) {
             this.playing = false;
-            this.emit('error', this, err);
+            this.emit("error", this, err);
             throw err;
         }
     }
     async handleTrackEnd() {
         const finishedTrack = this.queue.current;
         if (finishedTrack) {
-            if (this.repeatMode === 'track') {
+            if (this.repeatMode === "track") {
                 await this.play();
             }
-            else if (this.repeatMode === 'queue') {
+            else if (this.repeatMode === "queue") {
                 this.queue.add(finishedTrack);
                 this.queue.current = null;
                 await this.play();
@@ -428,6 +443,12 @@ class Player extends events_1.EventEmitter {
     isPaused() {
         return this.player.isPaused();
     }
+    async getLyrics(skipTrackSource = false) {
+        if (!this.queue.current) {
+            throw new Error("No track is currently playing.");
+        }
+        return loadLyrics(this.queue.current.encoded, skipTrackSource);
+    }
 }
 exports.Player = Player;
 exports.LavendePlayer = Player;
@@ -436,12 +457,15 @@ class LavendeManager extends events_1.EventEmitter {
     sendToShard;
     client;
     nodeManager = {
-        nodes: new Map()
+        nodes: new Map(),
     };
     constructor(options) {
         super();
         this.sendToShard = options.sendToShard;
         this.client = options.client;
+        if (options.configPath) {
+            native.setConfigPath(options.configPath);
+        }
     }
     init(clientData) {
         if (clientData) {
@@ -453,12 +477,12 @@ class LavendeManager extends events_1.EventEmitter {
         if (!player) {
             player = new Player(this, options);
             this.players.set(options.guildId, player);
-            this.emit('playerCreate', player);
-            player.on('trackStart', (p, t) => this.emit('trackStart', p, t));
-            player.on('trackEnd', (p, t, r) => this.emit('trackEnd', p, t, r));
-            player.on('queueEnd', (p) => this.emit('queueEnd', p));
-            player.on('playerDestroy', (p, r) => this.emit('playerDestroy', p, r));
-            player.on('error', (p, err) => this.emit('error', p, err));
+            this.emit("playerCreate", player);
+            player.on("trackStart", (p, t) => this.emit("trackStart", p, t));
+            player.on("trackEnd", (p, t, r) => this.emit("trackEnd", p, t, r));
+            player.on("queueEnd", (p) => this.emit("queueEnd", p));
+            player.on("playerDestroy", (p, r) => this.emit("playerDestroy", p, r));
+            player.on("error", (p, err) => this.emit("error", p, err));
         }
         return player;
     }
@@ -471,7 +495,7 @@ class LavendeManager extends events_1.EventEmitter {
     sendRawData(packet) {
         if (!packet || !packet.t)
             return;
-        if (packet.t === 'VOICE_STATE_UPDATE') {
+        if (packet.t === "VOICE_STATE_UPDATE") {
             if (packet.d.user_id === this.client.id) {
                 const player = this.players.get(packet.d.guild_id);
                 if (player) {
@@ -483,7 +507,7 @@ class LavendeManager extends events_1.EventEmitter {
                 }
             }
         }
-        if (packet.t === 'VOICE_SERVER_UPDATE') {
+        if (packet.t === "VOICE_SERVER_UPDATE") {
             const player = this.players.get(packet.d.guild_id);
             if (player) {
                 player.setVoiceState({
@@ -500,27 +524,45 @@ async function load(identifier, requester = null) {
     const jsonStr = await native.load(identifier);
     const data = JSON.parse(jsonStr);
     const result = {
-        loadType: 'empty',
+        loadType: "empty",
         tracks: [],
     };
-    if (data.loadType === 'track') {
-        result.loadType = 'track';
+    if (data.loadType === "track") {
+        result.loadType = "track";
         result.tracks = [new Track(data.data, requester)];
     }
-    else if (data.loadType === 'playlist') {
-        result.loadType = 'playlist';
+    else if (data.loadType === "playlist") {
+        result.loadType = "playlist";
         result.playlistInfo = data.data.info;
         result.tracks = data.data.tracks.map((t) => new Track(t, requester));
     }
-    else if (data.loadType === 'search') {
-        result.loadType = 'search';
+    else if (data.loadType === "search") {
+        result.loadType = "search";
         result.tracks = data.data.map((t) => new Track(t, requester));
     }
-    else if (data.loadType === 'error') {
-        result.loadType = 'error';
+    else if (data.loadType === "error") {
+        result.loadType = "error";
         result.exception = data.data;
     }
     return result;
+}
+async function loadLyrics(encodedTrack, skipTrackSource = false) {
+    try {
+        const res = await native.loadLyrics(encodedTrack, skipTrackSource);
+        return JSON.parse(res);
+    }
+    catch (e) {
+        return null;
+    }
+}
+async function loadLyricsBySearch(title, artist) {
+    try {
+        const res = await native.loadLyricsBySearch(title, artist);
+        return JSON.parse(res);
+    }
+    catch (e) {
+        return null;
+    }
 }
 class MiniMap extends Map {
     constructor(data = []) {
@@ -623,33 +665,33 @@ exports.validSponsorBlocks = [
     "outro",
     "preview",
     "music_offtopic",
-    "filler"
+    "filler",
 ];
 exports.audioOutputsData = {
     mono: {
         leftToLeft: 0.5,
         leftToRight: 0.5,
         rightToLeft: 0.5,
-        rightToRight: 0.5
+        rightToRight: 0.5,
     },
     stereo: {
         leftToLeft: 1,
         leftToRight: 0,
         rightToLeft: 0,
-        rightToRight: 1
+        rightToRight: 1,
     },
     left: {
         leftToLeft: 1,
         leftToRight: 0,
         rightToLeft: 1,
-        rightToRight: 0
+        rightToRight: 0,
     },
     right: {
         leftToLeft: 0,
         leftToRight: 1,
         rightToLeft: 0,
-        rightToRight: 1
-    }
+        rightToRight: 1,
+    },
 };
 exports.EQList = {
     BassboostEarrape: [
@@ -662,8 +704,8 @@ exports.EQList = {
         { band: 6, gain: -0.16875 },
         { band: 7, gain: 0.08625 },
         { band: 8, gain: 0.13125 },
-        { band: 9, gain: 0.16875 }
-    ]
+        { band: 9, gain: 0.16875 },
+    ],
 };
 exports.DefaultSources = {
     "youtube music": "ytmsearch",
@@ -744,7 +786,7 @@ exports.DefaultSources = {
     amzsearch: "amzsearch",
     admsearch: "admsearch",
     gnsearch: "gnsearch",
-    szsearch: "szsearch"
+    szsearch: "szsearch",
 };
 exports.SourceLinksRegexes = {
     YoutubeRegex: /https?:\/\/?(?:www\.)?(?:(m|www)\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts|playlist\?|watch\?v=|watch\?.+(?:&|&#38;);v=))([a-zA-Z0-9\-_]{11})?(?:(?:\?|&|&#38;)index=((?:\d){1,3}))?(?:(?:\?|&|&#38;)?list=([a-zA-Z\-_0-9]{34}))?(?:\S+)?/,
@@ -788,6 +830,6 @@ exports.SourceLinksRegexes = {
     tiktok: /https:\/\/www\.tiktok\.com\//,
     mixcloud: /https:\/\/www\.mixcloud\.com\//,
     musicYandex: /https:\/\/music\.yandex\.ru\//,
-    radiohost: /https?:\/\/[^.\s]+\.radiohost\.de\/(\S+)/
+    radiohost: /https?:\/\/[^.\s]+\.radiohost\.de\/(\S+)/,
 };
 //# sourceMappingURL=index.js.map

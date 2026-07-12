@@ -10,6 +10,7 @@ pub use lavende_core::player::{
     VibratoFilter,
 };
 pub use lavende_core::protocol::events::{TrackEndReason, TrackException};
+pub use lavende_core::protocol::models::{LyricsData, LyricsLine};
 pub use lavende_core::protocol::tracks::{
     LoadResult, PlaylistData, SearchResult, Track, TrackInfo,
 };
@@ -594,6 +595,15 @@ impl LavendePlayer {
     pub fn is_paused(&self) -> bool {
         self.native_player.is_paused()
     }
+    pub async fn get_lyrics(&self, skip_track_source: bool) -> Result<LyricsData, String> {
+        let current_track = {
+            let q = self.queue.read().await;
+            q.current.clone()
+        };
+        let track = current_track.ok_or_else(|| "No track is currently playing".to_string())?;
+        let res_json = lavende_core::load_lyrics(track.encoded, skip_track_source).await?;
+        serde_json::from_str(&res_json).map_err(|e| e.to_string())
+    }
 }
 
 impl Clone for LavendePlayer {
@@ -1090,3 +1100,13 @@ pub const SOURCE_LINKS_REGEXES: &[(&str, &str)] = &[
     ("musicYandex", r"https:\/\/music\.yandex\.ru\/"),
     ("radiohost", r"https?:\/\/[^.\s]+\.radiohost\.de\/(\S+)"),
 ];
+
+pub async fn load_lyrics(encoded_track: String, skip_track_source: bool) -> Result<LyricsData, String> {
+    let res_json = lavende_core::load_lyrics(encoded_track, skip_track_source).await?;
+    serde_json::from_str(&res_json).map_err(|e| e.to_string())
+}
+
+pub async fn load_lyrics_by_search(title: String, artist: String) -> Result<LyricsData, String> {
+    let res_json = lavende_core::load_lyrics_by_search(title, artist).await?;
+    serde_json::from_str(&res_json).map_err(|e| e.to_string())
+}
