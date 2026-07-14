@@ -70,7 +70,8 @@
       "playlist_load_limit": 0,
       "album_load_limit": 0,
       "playlist_page_load_concurrency": 5,
-      "album_page_load_concurrency": 5
+      "album_page_load_concurrency": 5,
+      "media_api_token": ""
     },
     "deezer": {
       "enabled": false,
@@ -80,11 +81,12 @@
     "tidal": {
       "enabled": false,
       "country_code": "us",
-      "quality": "HIGH",
+      "quality": "LOSSLESS",
       "refresh_token": null,
       "playlist_load_limit": 50,
       "album_load_limit": 50,
-      "artist_load_limit": 20
+      "artist_load_limit": 20,
+      "get_oauth_token": false
     },
     "yandexmusic": {
       "enabled": false,
@@ -116,7 +118,8 @@
       "search_limit": 10,
       "playlist_load_limit": 50,
       "album_load_limit": 50,
-      "artist_load_limit": 20
+      "artist_load_limit": 20,
+      "stream_quality": "high"
     },
     "anghami": {
       "enabled": false,
