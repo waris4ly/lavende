@@ -156,21 +156,21 @@ export class FilterManager {
     const mix =
       type === "mono"
         ? {
-            leftToLeft: 0.5,
-            leftToRight: 0.5,
-            rightToLeft: 0.5,
-            rightToRight: 0.5,
-          }
+          leftToLeft: 0.5,
+          leftToRight: 0.5,
+          rightToLeft: 0.5,
+          rightToRight: 0.5,
+        }
         : type === "left"
           ? { leftToLeft: 1, leftToRight: 0, rightToLeft: 1, rightToRight: 0 }
           : type === "right"
             ? { leftToLeft: 0, leftToRight: 1, rightToLeft: 0, rightToRight: 1 }
             : {
-                leftToLeft: 1,
-                leftToRight: 0,
-                rightToLeft: 0,
-                rightToRight: 1,
-              };
+              leftToLeft: 1,
+              leftToRight: 0,
+              rightToLeft: 0,
+              rightToRight: 1,
+            };
     this.data.channelMix = mix;
     this.filters.audioOutput = type;
     await this.applyPlayerFilters();
@@ -528,6 +528,7 @@ export class Player extends EventEmitter {
 
   public async skip(): Promise<void> {
     await this.player.stop();
+    this.handleTrackEnd();
   }
 
   public async seek(positionMs: number): Promise<void> {
@@ -651,6 +652,16 @@ export class LavendeManager extends EventEmitter {
 
 export { Player as LavendePlayer };
 
+export const DEFAULT_SEARCH_PLATFORM = "ytmsearch";
+
+function isUrl(str: string): boolean {
+  return /^https?:\/\//i.test(str);
+}
+
+function hasSearchPrefix(str: string): boolean {
+  return /^[a-z]+search:|^[a-z]+rec:|^[a-z]+isrc:/i.test(str.split("?")[0]);
+}
+
 export async function load(
   identifier: string,
   requester: any = null,
@@ -660,6 +671,9 @@ export async function load(
   playlistInfo?: { name: string; selectedTrack?: number };
   exception?: { message: string; severity: string };
 }> {
+  if (!isUrl(identifier) && !hasSearchPrefix(identifier)) {
+    identifier = `${DEFAULT_SEARCH_PLATFORM}:${identifier}`;
+  }
   const jsonStr = await native.load(identifier);
   const data = JSON.parse(jsonStr);
 

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SourceLinksRegexes = exports.DefaultSources = exports.EQList = exports.audioOutputsData = exports.validSponsorBlocks = exports.DisconnectReasons = exports.DestroyReasons = exports.DebugEvents = exports.MiniMap = exports.LavendePlayer = exports.LavendeManager = exports.Player = exports.FilterManager = exports.Queue = exports.Track = void 0;
+exports.SourceLinksRegexes = exports.DefaultSources = exports.EQList = exports.audioOutputsData = exports.validSponsorBlocks = exports.DisconnectReasons = exports.DestroyReasons = exports.DebugEvents = exports.MiniMap = exports.DEFAULT_SEARCH_PLATFORM = exports.LavendePlayer = exports.LavendeManager = exports.Player = exports.FilterManager = exports.Queue = exports.Track = void 0;
 exports.load = load;
 exports.loadLyrics = loadLyrics;
 exports.loadLyricsBySearch = loadLyricsBySearch;
@@ -421,6 +421,7 @@ class Player extends events_1.EventEmitter {
     }
     async skip() {
         await this.player.stop();
+        this.handleTrackEnd();
     }
     async seek(positionMs) {
         await this.player.seek(positionMs);
@@ -520,7 +521,17 @@ class LavendeManager extends events_1.EventEmitter {
     }
 }
 exports.LavendeManager = LavendeManager;
+exports.DEFAULT_SEARCH_PLATFORM = "ytmsearch";
+function isUrl(str) {
+    return /^https?:\/\//i.test(str);
+}
+function hasSearchPrefix(str) {
+    return /^[a-z]+search:|^[a-z]+rec:|^[a-z]+isrc:/i.test(str.split("?")[0]);
+}
 async function load(identifier, requester = null) {
+    if (!isUrl(identifier) && !hasSearchPrefix(identifier)) {
+        identifier = `${exports.DEFAULT_SEARCH_PLATFORM}:${identifier}`;
+    }
     const jsonStr = await native.load(identifier);
     const data = JSON.parse(jsonStr);
     const result = {

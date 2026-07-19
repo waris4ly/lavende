@@ -214,8 +214,11 @@ pub struct Player {
     pub mixer: Shared<Mixer>,
     pub filter_chain: Shared<FilterChain>,
     pub voice_gateway_cancel: Arc<tokio::sync::Mutex<Option<CancellationToken>>>,
+    pub position_tracking_cancel: Arc<tokio::sync::Mutex<Option<CancellationToken>>>,
     pub track_handle: Arc<tokio::sync::Mutex<Option<TrackHandle>>>,
     pub event_sender: Arc<tokio::sync::Mutex<Option<EventSender>>>,
+    pub stop_signal: Arc<AtomicBool>,
+    pub track_task: Arc<tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>>,
 }
 
 impl Player {
@@ -229,8 +232,11 @@ impl Player {
                 &Filters::default(),
             ))),
             voice_gateway_cancel: Arc::new(tokio::sync::Mutex::new(None)),
+            position_tracking_cancel: Arc::new(tokio::sync::Mutex::new(None)),
             track_handle: Arc::new(tokio::sync::Mutex::new(None)),
             event_sender: Arc::new(tokio::sync::Mutex::new(None)),
+            stop_signal: Arc::new(AtomicBool::new(false)),
+            track_task: Arc::new(tokio::sync::Mutex::new(None)),
         }
     }
     pub async fn play<F>(
@@ -250,22 +256,36 @@ impl Player {
         {
             *self.event_sender.lock().await = Some(events.clone());
         }
+        self.stop_signal.store(false, Ordering::Release);
+    fn get_source_manager_arc() -> Arc<crate::sources::manager::SourceManager> {
+        let guard = crate::get_source_manager().lock().unwrap();
+        guard.as_ref().unwrap().clone()
+    }
+        let sm_arc = get_source_manager_arc();
+        let player_config = sm_arc.player_config.clone();
+
         {
-            let mut cancel_guard = self.voice_gateway_cancel.lock().await;
+            let mut task_guard = self.track_task.lock().await;
+            if let Some(task) = task_guard.take() {
+                if !player_config.transitions.gapless && !player_config.transitions.crossfade {
+                    task.abort();
+                }
+            }
+        }
+        {
+            let mut cancel_guard = self.position_tracking_cancel.lock().await;
             if let Some(cancel) = cancel_guard.take() {
                 cancel.cancel();
             }
         }
         {
             let mut mixer_guard = self.mixer.lock().await;
-            mixer_guard.stop_all();
+            if !player_config.transitions.gapless && !player_config.transitions.crossfade {
+                mixer_guard.stop_all();
+            }
         }
         self.paused.store(false, Ordering::Release);
-        let sm_arc = {
-            let guard = crate::get_source_manager().lock().unwrap();
-            guard.as_ref().unwrap().clone()
-        };
-        let player_config = sm_arc.player_config.clone();
+
         let playable_track = match load_and_resolve_first_result(&sm_arc, &url).await {
             Ok(pt) => pt,
             Err(e) => {
@@ -273,91 +293,98 @@ impl Player {
                 return Ok(());
             }
         };
-        let mixer_clone = self.mixer.clone();
-        let track_handle_lock = self.track_handle.clone();
-        let events_clone = events.clone();
-        tokio::spawn(async move {
-            println!("Starting play task in background for identifier: {url}");
-            let (frame_rx, cmd_tx, err_rx) = playable_track.start_decoding(player_config.clone());
-            let (handle, audio_state, vol, pos, is_buffering) =
-                TrackHandle::new(cmd_tx, Arc::new(AtomicBool::new(false)));
-            {
-                let mut mixer_guard = mixer_clone.lock().await;
-                mixer_guard.add_track(
-                    frame_rx,
-                    audio_state,
-                    vol,
-                    pos,
-                    is_buffering,
-                    player_config.clone(),
-                );
-            }
-            {
-                let mut handle_guard = track_handle_lock.lock().await;
-                *handle_guard = Some(handle);
-            }
-            events_clone.send("trackStart", json!({}));
-            let err_rx = err_rx;
-            tokio::spawn(async move {
-                if let Ok(err) = err_rx.recv_async().await {
-                    events_clone.send("error", json!({ "message": err }));
-                }
-            });
-        });
-        let cancel_token = CancellationToken::new();
+        let (frame_rx, cmd_tx, err_rx) = playable_track.start_decoding(player_config.clone());
+        let (handle, audio_state, vol, pos, is_buffering) =
+            TrackHandle::new(cmd_tx, Arc::new(AtomicBool::new(false)));
         {
-            *self.voice_gateway_cancel.lock().await = Some(cancel_token.clone());
+            let mut mixer_guard = self.mixer.lock().await;
+            mixer_guard.add_track(
+                frame_rx,
+                audio_state,
+                vol,
+                pos,
+                is_buffering,
+                player_config.clone(),
+            );
         }
+        {
+            let mut handle_guard = self.track_handle.lock().await;
+            *handle_guard = Some(handle.clone());
+        }
+        events.send("trackStart", json!({}));
+        let tracking_token = CancellationToken::new();
+        {
+            *self.position_tracking_cancel.lock().await = Some(tracking_token.clone());
+        }
+        let events_err = events.clone();
+        let err_cancel = tracking_token.clone();
+        tokio::spawn(async move {
+            tokio::select! {
+                _ = err_cancel.cancelled() => {},
+                err = err_rx.recv_async() => {
+                    if let Ok(msg) = err {
+                        events_err.send("error", json!({ "message": msg }));
+                    }
+                },
+            }
+        });
+        let tracking_token_clone = tracking_token.clone();
         let track_handle_clone = self.track_handle.clone();
         let events_position = events.clone();
-        let cancel_token_clone = cancel_token.clone();
-        tokio::spawn(async move {
+        let stop_signal_clone = self.stop_signal.clone();
+        let track_task: tokio::task::JoinHandle<()> = tokio::spawn(async move {
             let mut interval = tokio::time::interval(std::time::Duration::from_millis(100));
             let mut ticks = 0;
-            while !cancel_token_clone.is_cancelled() {
+            while !tracking_token_clone.is_cancelled() {
                 interval.tick().await;
                 ticks += 1;
-                let handle_guard = track_handle_clone.lock().await;
-                if let Some(handle) = &*handle_guard {
-                    let state = handle.get_state();
-                    if state == PlayState::Stopped {
+                if stop_signal_clone.load(Ordering::Acquire) {
+                    break;
+                }
+                if let Some(handle) = &*track_handle_clone.lock().await {
+                    if handle.get_state() == PlayState::Stopped {
                         events_position.send("trackEnd", json!({ "reason": "FINISHED" }));
                         break;
                     }
-                    if state == PlayState::Playing {
-                        if ticks >= 10 {
-                            let pos = handle.get_position();
-                            events_position.send("position", json!({ "position": pos }));
-                            ticks = 0;
-                        }
+                    if handle.get_state() == PlayState::Playing && ticks >= 10 {
+                        events_position.send("position", json!({ "position": handle.get_position() }));
+                        ticks = 0;
                     }
                 }
             }
         });
-        let gateway_config = VoiceGatewayConfig {
-            guild_id: GuildId(self.guild_id.clone()),
-            user_id: UserId(user_id.parse().unwrap_or(0)),
-            channel_id: ChannelId(channel_id.parse().unwrap_or(0)),
-            session_id: SessionId(session_id.clone()),
-            token: token.clone(),
-            endpoint: endpoint.clone(),
-            mixer: self.mixer.clone(),
-            filter_chain: self.filter_chain.clone(),
-            ping: Arc::new(std::sync::atomic::AtomicI64::new(-1)),
-            event_tx: None,
-            frames_sent: Arc::new(std::sync::atomic::AtomicU64::new(0)),
-            frames_nulled: Arc::new(std::sync::atomic::AtomicU64::new(0)),
-            cancel_token: cancel_token.clone(),
-        };
-        let voice_gateway = VoiceGateway::new(gateway_config);
-        tokio::spawn(async move {
-            if let Err(e) = voice_gateway.run().await {
-                events.send(
-                    "error",
-                    json!({ "message": format!("VoiceGateway error: {e}") }),
-                );
-            }
-        });
+        {
+            *self.track_task.lock().await = Some(track_task);
+        }
+        if self.voice_gateway_cancel.lock().await.is_none() {
+            let gateway_token = CancellationToken::new();
+            *self.voice_gateway_cancel.lock().await = Some(gateway_token.clone());
+            let gateway_config = VoiceGatewayConfig {
+                guild_id: GuildId(self.guild_id.clone()),
+                user_id: UserId(user_id.parse().unwrap_or(0)),
+                channel_id: ChannelId(channel_id.parse().unwrap_or(0)),
+                session_id: SessionId(session_id.clone()),
+                token: token.clone(),
+                endpoint: endpoint.clone(),
+                mixer: self.mixer.clone(),
+                filter_chain: self.filter_chain.clone(),
+                ping: Arc::new(std::sync::atomic::AtomicI64::new(-1)),
+                event_tx: None,
+                frames_sent: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+                frames_nulled: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+                cancel_token: gateway_token.clone(),
+            };
+            let voice_gateway = VoiceGateway::new(gateway_config);
+            let events_gw = events.clone();
+            tokio::spawn(async move {
+                if let Err(e) = voice_gateway.run().await {
+                    events_gw.send(
+                        "error",
+                        json!({ "message": format!("VoiceGateway error: {e}") }),
+                    );
+                }
+            });
+        }
         Ok(())
     }
     pub async fn pause(&self) {
@@ -381,8 +408,21 @@ impl Player {
         }
     }
     pub async fn stop(&self) {
+        self.stop_signal.store(true, Ordering::Release);
+        {
+            let mut task_guard = self.track_task.lock().await;
+            if let Some(task) = task_guard.take() {
+                task.abort();
+            }
+        }
         {
             let mut cancel_guard = self.voice_gateway_cancel.lock().await;
+            if let Some(cancel) = cancel_guard.take() {
+                cancel.cancel();
+            }
+        }
+        {
+            let mut cancel_guard = self.position_tracking_cancel.lock().await;
             if let Some(cancel) = cancel_guard.take() {
                 cancel.cancel();
             }

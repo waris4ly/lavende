@@ -1,6 +1,7 @@
-﻿use crate::common::types::AnyResult;
+﻿use crate::{common::types::AnyResult, sources::youtube::cipher::YouTubeCipherManager};
 use serde_json::{Value, json};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Copy)]
 pub struct ClientProfile {
@@ -16,8 +17,12 @@ pub struct ClientProfile {
     pub device_make: Option<&'static str>,
     pub device_model: Option<&'static str>,
     pub android_sdk: Option<&'static str>,
+    pub platform: Option<&'static str>,
     pub referer: Option<&'static str>,
     pub origin: Option<&'static str>,
+    pub params: Option<&'static str>,
+    pub client_screen: Option<&'static str>,
+    pub attestation_request: Option<&'static str>,
 }
 
 pub mod profiles {
@@ -33,37 +38,40 @@ pub mod profiles {
         can_search: true,
         has_streams: true,
         os_name: None, os_version: None, device_make: None, device_model: None,
-        android_sdk: None,
+        android_sdk: None, platform: Some("DESKTOP"),
         referer: Some("https://www.youtube.com/"),
         origin: Some("https://www.youtube.com"),
+        params: None, client_screen: None, attestation_request: None,
     };
 
     pub static WEB_EMBEDDED: ClientProfile = ClientProfile {
         label: "WebEmbedded",
         client_name: "WEB_EMBEDDED_PLAYER",
         numeric_id: "56",
-        version: "1.20240814.01.00",
+        version: "1.20260128.01.00",
         user_agent: ua::WEB_EMBEDDED,
         can_search: false,
         has_streams: true,
         os_name: None, os_version: None, device_make: None, device_model: None,
-        android_sdk: None,
+        android_sdk: None, platform: Some("DESKTOP"),
         referer: Some("https://www.youtube.com/"),
         origin: Some("https://www.youtube.com"),
+        params: None, client_screen: None, attestation_request: None,
     };
 
     pub static WEB_REMIX: ClientProfile = ClientProfile {
         label: "WebRemix",
         client_name: "WEB_REMIX",
-        numeric_id: "67",
-        version: "1.20241218.01.00",
+        numeric_id: "26",
+        version: "1.20260121.03.00",
         user_agent: ua::WEB,
         can_search: true,
         has_streams: false,
         os_name: None, os_version: None, device_make: None, device_model: None,
-        android_sdk: None,
+        android_sdk: None, platform: None,
         referer: Some("https://music.youtube.com/"),
         origin: Some("https://music.youtube.com"),
+        params: None, client_screen: None, attestation_request: None,
     };
 
     pub static ANDROID: ClientProfile = ClientProfile {
@@ -76,8 +84,9 @@ pub mod profiles {
         has_streams: true,
         os_name: Some("Android"), os_version: Some("14"),
         device_make: Some("Google"), device_model: Some("Pixel 6"),
-        android_sdk: Some("34"),
+        android_sdk: Some("34"), platform: None,
         referer: None, origin: None,
+        params: None, client_screen: None, attestation_request: None,
     };
 
     pub static ANDROID_VR: ClientProfile = ClientProfile {
@@ -90,8 +99,9 @@ pub mod profiles {
         has_streams: true,
         os_name: Some("Android"), os_version: Some("15"),
         device_make: Some("Oculus"), device_model: Some("Quest 3"),
-        android_sdk: Some("35"),
+        android_sdk: Some("35"), platform: None,
         referer: None, origin: None,
+        params: None, client_screen: None, attestation_request: None,
     };
 
     pub static IOS: ClientProfile = ClientProfile {
@@ -104,7 +114,9 @@ pub mod profiles {
         has_streams: true,
         os_name: Some("iOS"), os_version: Some("18.2.0.22C152"),
         device_make: Some("Apple"), device_model: Some("iPhone16,2"),
-        android_sdk: None, referer: None, origin: None,
+        android_sdk: None, platform: None,
+        referer: None, origin: None,
+        params: None, client_screen: None, attestation_request: None,
     };
 
     pub static TV: ClientProfile = ClientProfile {
@@ -116,7 +128,9 @@ pub mod profiles {
         can_search: true,
         has_streams: true,
         os_name: None, os_version: None, device_make: None, device_model: None,
-        android_sdk: None, referer: None, origin: None,
+        android_sdk: None, platform: None,
+        referer: None, origin: None,
+        params: None, client_screen: None, attestation_request: None,
     };
 
     pub static TV_CAST: ClientProfile = ClientProfile {
@@ -128,7 +142,9 @@ pub mod profiles {
         can_search: false,
         has_streams: true,
         os_name: Some("Android"), os_version: None, device_make: None, device_model: None,
-        android_sdk: None, referer: None, origin: None,
+        android_sdk: None, platform: None,
+        referer: None, origin: None,
+        params: None, client_screen: None, attestation_request: None,
     };
 
     pub static TV_EMBEDDED: ClientProfile = ClientProfile {
@@ -140,33 +156,40 @@ pub mod profiles {
         can_search: false,
         has_streams: true,
         os_name: None, os_version: None, device_make: None, device_model: None,
-        android_sdk: None,
+        android_sdk: None, platform: None,
         referer: Some("https://www.youtube.com/"),
         origin: Some("https://www.youtube.com"),
+        params: Some("2AMB"), client_screen: None, attestation_request: None,
     };
 
     pub static TV_SIMPLY: ClientProfile = ClientProfile {
         label: "TvSimply",
         client_name: "TVHTML5_SIMPLY",
-        numeric_id: "85",
-        version: "2.0",
+        numeric_id: "TVHTML5_SIMPLY",
+        version: "1.0",
         user_agent: ua::TVHTML5_SIMPLY,
         can_search: false,
         has_streams: true,
         os_name: None, os_version: None, device_make: None, device_model: None,
-        android_sdk: None, referer: None, origin: None,
+        android_sdk: None, platform: None,
+        referer: None, origin: None,
+        params: Some("2AMB"), client_screen: None,
+        attestation_request: Some(r#"{"omitBotguardData":true}"#),
     };
 
     pub static TV_UNPLUGGED: ClientProfile = ClientProfile {
         label: "TvUnplugged",
         client_name: "TVHTML5_UNPLUGGED",
-        numeric_id: "7",
-        version: "7.20250811.19.00",
+        numeric_id: "",
+        version: "6.13",
         user_agent: ua::TVHTML5_UNPLUGGED,
         can_search: false,
         has_streams: true,
         os_name: None, os_version: None, device_make: None, device_model: None,
-        android_sdk: None, referer: None, origin: None,
+        android_sdk: None, platform: None,
+        referer: None, origin: None,
+        params: Some("2AMB"), client_screen: Some("EMBED"),
+        attestation_request: None,
     };
 
     pub static MWEB: ClientProfile = ClientProfile {
@@ -178,7 +201,9 @@ pub mod profiles {
         can_search: true,
         has_streams: true,
         os_name: None, os_version: None, device_make: None, device_model: None,
-        android_sdk: None, referer: None, origin: None,
+        android_sdk: None, platform: None,
+        referer: None, origin: None,
+        params: None, client_screen: None, attestation_request: None,
     };
 
     pub static MUSIC_ANDROID: ClientProfile = ClientProfile {
@@ -191,21 +216,24 @@ pub mod profiles {
         has_streams: false,
         os_name: Some("Android"), os_version: Some("14"),
         device_make: Some("Google"), device_model: Some("Pixel 6"),
-        android_sdk: Some("34"), referer: None, origin: None,
+        android_sdk: Some("34"), platform: None,
+        referer: None, origin: None,
+        params: None, client_screen: None, attestation_request: None,
     };
 
     pub static WEB_PARENT_TOOLS: ClientProfile = ClientProfile {
         label: "WebParentTools",
         client_name: "WEB_PARENT_TOOLS",
-        numeric_id: "98",
-        version: "1.20240726.00.00",
+        numeric_id: "88",
+        version: "1.20220918",
         user_agent: ua::WEB,
         can_search: false,
         has_streams: true,
         os_name: None, os_version: None, device_make: None, device_model: None,
-        android_sdk: None,
+        android_sdk: None, platform: None,
         referer: Some("https://www.youtube.com/"),
         origin: Some("https://www.youtube.com"),
+        params: Some("2AMB"), client_screen: None, attestation_request: None,
     };
 
     pub static ALL: &[&ClientProfile] = &[
@@ -301,6 +329,41 @@ pub struct Thumbnail {
     pub url: String,
 }
 
+pub const AUDIO_ITAG_PRIORITY: &[i64] = &[251, 250, 140];
+pub const ITAG_FALLBACK: i64 = 18;
+
+pub fn decode_signature_cipher(cipher_str: &str) -> Option<(String, String)> {
+    let mut url = None;
+    let mut sig = None;
+    for part in cipher_str.split('&') {
+        if let Some((k, v)) = part.split_once('=') {
+            let decoded = urlencoding::decode(v).ok()?.to_string();
+            match k {
+                "url" => url = Some(decoded),
+                "s" => sig = Some(decoded),
+                _ => {}
+            }
+        }
+    }
+    match (url, sig) {
+        (Some(u), Some(s)) => Some((u, s)),
+        _ => None,
+    }
+}
+
+impl ClientProfile {
+    pub fn can_handle_request(&self, identifier: &str) -> bool {
+        match self.client_name {
+            "WEB_REMIX" => {
+                identifier.contains("music.youtube.com") || identifier.starts_with("ytmsearch:")
+            }
+            _ => true,
+        }
+    }
+}
+
+pub const INNERTUBE_API: &str = "https://youtubei.googleapis.com";
+
 fn build_context(profile: &ClientProfile, visitor_data: Option<&str>) -> Value {
     let mut client = json!({
         "clientName": profile.client_name,
@@ -324,10 +387,20 @@ fn build_context(profile: &ClientProfile, visitor_data: Option<&str>) -> Value {
     if let Some(sdk) = profile.android_sdk {
         client["androidSdkVersion"] = json!(sdk);
     }
+    if let Some(p) = profile.platform {
+        client["platform"] = json!(p);
+    }
+    if let Some(cs) = profile.client_screen {
+        client["clientScreen"] = json!(cs);
+    }
     if let Some(vd) = visitor_data {
         client["visitorData"] = json!(vd);
     }
-    json!({ "client": client })
+    json!({
+        "client": client,
+        "user": { "lockedSafetyMode": false },
+        "request": { "useSsl": true }
+    })
 }
 
 fn add_api_headers(
@@ -371,13 +444,21 @@ pub async fn player_request(
         "contentCheckOk": true,
         "racyCheckOk": true,
     });
+    if let Some(p) = profile.params {
+        payload["params"] = json!(p);
+    }
+    if let Some(att) = profile.attestation_request {
+        if let Ok(v) = serde_json::from_str::<Value>(att) {
+            payload["attestationRequest"] = v;
+        }
+    }
     if let Some(sts) = sig_timestamp {
         payload["playbackContext"] = json!({
             "contentPlaybackContext": { "signatureTimestamp": sts }
         });
     }
-    let url = "https://www.youtube.com/youtubei/v1/player?prettyPrint=false";
-    let req = add_api_headers(http.post(url), profile, visitor_data, auth);
+    let url = format!("{}/youtubei/v1/player?prettyPrint=false", INNERTUBE_API);
+    let req = add_api_headers(http.post(&url), profile, visitor_data, auth);
     let res = req.json(&payload).send().await?;
     let status = res.status();
     if !status.is_success() {
@@ -401,11 +482,11 @@ pub async fn search_request(
         payload["params"] = json!(p);
     }
     let url = if profile.client_name == "WEB_REMIX" {
-        "https://music.youtube.com/youtubei/v1/search?prettyPrint=false"
+        "https://music.youtube.com/youtubei/v1/search?prettyPrint=false".to_string()
     } else {
-        "https://www.youtube.com/youtubei/v1/search?prettyPrint=false"
+        format!("{}/youtubei/v1/search?prettyPrint=false", INNERTUBE_API)
     };
-    let req = add_api_headers(http.post(url), profile, visitor_data, auth);
+    let req = add_api_headers(http.post(&url), profile, visitor_data, auth);
     let res = req.json(&payload).send().await?;
     let status = res.status();
     if !status.is_success() {
@@ -493,22 +574,123 @@ pub fn check_playability(status: &PlayabilityStatus) -> Result<(), String> {
     }
 }
 
-pub fn best_audio_format<'a>(data: &'a crate::sources::youtube::innertube::StreamingData) -> Option<&'a Format> {
+pub fn best_audio_format(data: &StreamingData) -> Option<&Format> {
     let adaptive = data.adaptive_formats.as_deref().unwrap_or(&[]);
     let formats = data.formats.as_deref().unwrap_or(&[]);
 
-    let audio_only: Vec<&Format> = adaptive
-        .iter()
-        .filter(|f| f.mime_type.starts_with("audio/"))
-        .collect();
+    let all: Vec<&Format> = adaptive.iter().chain(formats.iter()).collect();
 
-    if let Some(best) = audio_only
-        .iter()
-        .copied()
-        .max_by_key(|f| f.bitrate)
-    {
-        return Some(best);
+    for &target_itag in AUDIO_ITAG_PRIORITY {
+        for f in &all {
+            if f.itag as i64 == target_itag && f.mime_type.starts_with("audio/") {
+                return Some(f);
+            }
+        }
     }
 
-    formats.iter().max_by_key(|f| f.bitrate)
+    for f in &all {
+        if f.itag as i64 == ITAG_FALLBACK && f.mime_type.starts_with("audio/") {
+            return Some(f);
+        }
+    }
+
+    all.iter()
+        .filter(|f| f.mime_type.starts_with("audio/"))
+        .max_by_key(|f| f.bitrate)
+        .copied()
+        .or_else(|| all.iter().max_by_key(|f| f.bitrate).copied())
+}
+
+pub fn extract_thumbnail(renderer: &Value, video_id: Option<&str>) -> Option<String> {
+    let thumbnails = renderer
+        .get("thumbnail")
+        .and_then(|t| t.get("thumbnails"))
+        .or_else(|| {
+            renderer
+                .get("thumbnail")
+                .and_then(|t| t.get("musicThumbnailRenderer"))
+                .and_then(|t| t.get("thumbnail"))
+                .and_then(|t| t.get("thumbnails"))
+        });
+
+    if let Some(list) = thumbnails.and_then(|t| t.as_array())
+        && !list.is_empty()
+    {
+        let lh3 = list.iter().rev().find_map(|t| {
+            t.get("url")
+                .and_then(|u| u.as_str())
+                .filter(|u| u.contains("lh3.googleusercontent.com"))
+                .map(|u| u.split('?').next().unwrap_or(u).to_string())
+        });
+        if let Some(url) = lh3 {
+            return Some(url);
+        }
+
+        let best = list
+            .iter()
+            .max_by_key(|t| t.get("width").and_then(|w| w.as_u64()).unwrap_or(0));
+
+        if let Some(url) = best.and_then(|t| t.get("url")).and_then(|u| u.as_str()) {
+            let clean = url.split('?').next().unwrap_or(url);
+            if clean.contains("i.ytimg.com") {
+                let upgraded = clean
+                    .replace("mqdefault", "maxresdefault")
+                    .replace("sddefault", "maxresdefault")
+                    .replace("hqdefault", "maxresdefault");
+                return Some(upgraded);
+            }
+            return Some(clean.to_string());
+        }
+    }
+
+    if let Some(id) = video_id {
+        return Some(format!("https://i.ytimg.com/vi/{}/maxresdefault.jpg", id));
+    }
+
+    None
+}
+
+pub async fn resolve_format_url(
+    format: &Format,
+    player_page_url: &str,
+    cipher_manager: &Arc<YouTubeCipherManager>,
+) -> AnyResult<Option<String>> {
+    if let Some(url) = format.url.as_ref() {
+        let n_param = url
+            .split("&n=")
+            .nth(1)
+            .or_else(|| url.split("?n=").nth(1))
+            .and_then(|s| s.split('&').next());
+
+        if n_param.is_none() {
+            return Ok(Some(url.to_string()));
+        }
+
+        let resolved = cipher_manager
+            .resolve_url(url, player_page_url, n_param, None)
+            .await?;
+        return Ok(Some(resolved));
+    }
+
+    let cipher_str = format
+        .signature_cipher
+        .as_ref()
+        .or(format.cipher.as_ref());
+
+    if let Some(cipher_str) = cipher_str
+        && let Some((url, sig)) = decode_signature_cipher(cipher_str)
+    {
+        let n_param = url
+            .split("&n=")
+            .nth(1)
+            .or_else(|| url.split("?n=").nth(1))
+            .and_then(|s| s.split('&').next());
+
+        let resolved = cipher_manager
+            .resolve_url(&url, player_page_url, n_param, Some(&sig))
+            .await?;
+        return Ok(Some(resolved));
+    }
+
+    Ok(None)
 }

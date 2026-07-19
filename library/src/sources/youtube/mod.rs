@@ -459,7 +459,7 @@ impl YouTubeSource {
             }
 
             for client in &music_clients {
-                if !client.can_search {
+                if !client.can_search || !client.can_handle_request(identifier) {
                     continue;
                 }
                 tracing::debug!("Searching '{}' with {}", query, client.label);
@@ -493,7 +493,7 @@ impl YouTubeSource {
             .collect();
 
         for client in &primary {
-            if !client.can_search {
+            if !client.can_search || !client.can_handle_request(identifier) {
                 continue;
             }
             tracing::debug!("Searching '{}' with {}", query, client.label);
@@ -521,7 +521,7 @@ impl YouTubeSource {
             .collect();
 
         for client in &secondary_search {
-            if !client.can_search {
+            if !client.can_search || !client.can_handle_request(identifier) {
                 continue;
             }
             tracing::debug!("Secondary search '{}' with {}", query, client.label);
@@ -554,7 +554,7 @@ impl YouTubeSource {
         }
 
         for client in fallback {
-            if !client.can_search {
+            if !client.can_search || !client.can_handle_request(identifier) {
                 continue;
             }
             tracing::debug!("Fallback search '{}' with {}", query, client.label);
@@ -586,6 +586,9 @@ impl YouTubeSource {
         let visitor_data = context.get("visitorData").and_then(|v| v.as_str());
 
         for client in clients {
+            if !client.can_handle_request(identifier) {
+                continue;
+            }
             let auth = self.oauth.get_auth_header().await;
             match browse_playlist_request(&self.http, client, &playlist_id, visitor_data, auth.as_deref()).await {
                 Ok(body) => {
@@ -631,6 +634,9 @@ impl YouTubeSource {
             }
 
             for client in &playlist_clients {
+                if !client.can_handle_request(identifier) {
+                    continue;
+                }
                 tracing::debug!("Fetching playlist '{}' with {}", playlist_id, client.label);
                 let auth = self.oauth.get_auth_header().await;
                 match browse_playlist_request(&self.http, client, &playlist_id, visitor_data, auth.as_deref()).await {
@@ -660,6 +666,9 @@ impl YouTubeSource {
         let resolve_clients = self.resolve_clients.clone();
 
         for client in &resolve_clients {
+            if !client.can_handle_request(identifier) {
+                continue;
+            }
             tracing::debug!("Resolving track '{}' with {}", id, client.label);
             let auth = self.oauth.get_auth_header().await;
             let sig_timestamp = self.cipher_manager.get_signature_timestamp().await.ok();
@@ -687,6 +696,9 @@ impl YouTubeSource {
         }
 
         for client in fallback {
+            if !client.can_handle_request(identifier) {
+                continue;
+            }
             tracing::debug!("Fallback resolve '{}' with {}", id, client.label);
             let auth = self.oauth.get_auth_header().await;
             let sig_timestamp = self.cipher_manager.get_signature_timestamp().await.ok();

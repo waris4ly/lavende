@@ -15,7 +15,7 @@
          AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
     pub const WEB_EMBEDDED: &str =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
-         (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
+         (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36,gzip(gfe)";
     pub const TVHTML5_SIMPLY: &str =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
          (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36";
@@ -26,7 +26,7 @@
          com.amazon.firetv.youtube/22.3.r2.v66.0";
     pub const WEB: &str =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
-         (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36";
+         (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
 }
 
 pub fn cdn_user_agent(stream_url: &str) -> Option<&'static str> {

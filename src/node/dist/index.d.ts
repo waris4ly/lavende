@@ -178,6 +178,7 @@ export declare class LavendeManager extends EventEmitter {
     sendRawData(packet: any): void;
 }
 export { Player as LavendePlayer };
+export declare const DEFAULT_SEARCH_PLATFORM = "ytmsearch";
 export declare function load(identifier: string, requester?: any): Promise<{
     loadType: "track" | "playlist" | "search" | "empty" | "error";
     tracks: Track[];

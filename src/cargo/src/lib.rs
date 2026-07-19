@@ -298,6 +298,7 @@ pub struct LavendePlayer {
     play_on_connect: Arc<RwLock<bool>>,
     manager_client_id: String,
     send_to_shard: Arc<dyn Fn(String, serde_json::Value) + Send + Sync>,
+    transitioning: Arc<RwLock<bool>>,
 }
 
 impl LavendePlayer {
@@ -326,6 +327,7 @@ impl LavendePlayer {
             play_on_connect: Arc::new(RwLock::new(false)),
             manager_client_id: client_id,
             send_to_shard,
+            transitioning: Arc::new(RwLock::new(false)),
         }
     }
 
@@ -513,6 +515,10 @@ impl LavendePlayer {
                                 guild_id: guild_id.clone(),
                                 position: pos,
                             });
+                            let sc = self_clone.clone();
+                            tokio::spawn(async move {
+                                sc.check_crossfade_threshold(pos).await;
+                            });
                         }
                     }
                     "error" => {
@@ -535,25 +541,75 @@ impl LavendePlayer {
     fn handle_track_end(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
         let self_clone = self.clone();
         Box::pin(async move {
+            {
+                let mut trans = self_clone.transitioning.write().await;
+                if *trans {
+                    *trans = false;
+                    return;
+                }
+            }
+            self_clone.trigger_transition().await;
+        })
+    }
+
+    fn get_transitions_config() -> (bool, bool, u64) {
+        let guard = lavende_core::get_source_manager().lock().unwrap();
+        if let Some(sm) = guard.as_ref() {
+            (sm.player_config.transitions.gapless, sm.player_config.transitions.crossfade, sm.player_config.transitions.crossfade_duration_ms)
+        } else {
+            (false, false, 0)
+        }
+    }
+
+    async fn check_crossfade_threshold(&self, pos_ms: i64) {
+        let (gapless, crossfade, crossfade_duration) = Self::get_transitions_config();
+        if !gapless && !crossfade {
+            return;
+        }
+        let threshold = if crossfade { crossfade_duration } else { 0 };
+        let threshold = if threshold == 0 { 500 } else { threshold };
+
+        let track_len = {
+            let q = self.queue.read().await;
+            if let Some(t) = &q.current {
+                t.info.length as i64
+            } else {
+                0
+            }
+        };
+
+        if track_len > 0 && pos_ms >= (track_len - threshold as i64) {
+            let mut started = self.transitioning.write().await;
+            if !*started {
+                if !self.queue.read().await.is_empty() {
+                    *started = true;
+                    self.trigger_transition().await;
+                }
+            }
+        }
+    }
+
+    fn trigger_transition(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send + '_>> {
+        Box::pin(async move {
             let (repeat_mode, finished_track_opt) = {
-                let mode = self_clone.repeat_mode.read().await.clone();
-                let mut q = self_clone.queue.write().await;
+                let mode = self.repeat_mode.read().await.clone();
+                let mut q = self.queue.write().await;
                 (mode, q.current.take())
             };
             if let Some(finished_track) = finished_track_opt {
                 match repeat_mode {
                     RepeatMode::Track => {
-                        self_clone.queue.write().await.current = Some(finished_track);
+                        self.queue.write().await.current = Some(finished_track);
                     }
                     RepeatMode::Queue => {
-                        self_clone.queue.write().await.add(finished_track);
+                        self.queue.write().await.add(finished_track);
                     }
                     RepeatMode::Off => {
-                        self_clone.queue.write().await.previous.push(finished_track);
+                        self.queue.write().await.previous.push(finished_track);
                     }
                 }
             }
-            let _ = self_clone.play().await;
+            let _ = self.play().await;
         })
     }
 
@@ -622,6 +678,7 @@ impl Clone for LavendePlayer {
             play_on_connect: self.play_on_connect.clone(),
             manager_client_id: self.manager_client_id.clone(),
             send_to_shard: self.send_to_shard.clone(),
+            transitioning: self.transitioning.clone(),
         }
     }
 }
@@ -719,7 +776,26 @@ impl LavendeManager {
     }
 }
 
+pub const DEFAULT_SEARCH_PLATFORM: &str = "ytsearch";
+
+fn is_url(s: &str) -> bool {
+    s.starts_with("http://") || s.starts_with("https://")
+}
+
+fn has_search_prefix(s: &str) -> bool {
+    let before_qs = s.split('?').next().unwrap_or(s);
+    before_qs.starts_with(|c: char| c.is_ascii_lowercase())
+        && before_qs.contains("search:")
+        || before_qs.contains("rec:")
+        || before_qs.contains("isrc:")
+}
+
 pub async fn load(identifier: String) -> Result<LoadResult, String> {
+    let identifier = if !is_url(&identifier) && !has_search_prefix(&identifier) {
+        format!("{}:{}", DEFAULT_SEARCH_PLATFORM, identifier)
+    } else {
+        identifier
+    };
     let json_str = lavende_core::load(identifier).await?;
     serde_json::from_str(&json_str).map_err(|e| format!("Failed to parse load result: {}", e))
 }

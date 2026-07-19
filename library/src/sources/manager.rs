@@ -421,21 +421,17 @@ pub mod registration {
         common::HttpClientPool,
         sources::{
             amazonmusic::AmazonMusicSource,
-            anghami::AnghamiSource,
             applemusic::AppleMusicSource,
             audiomack::AudiomackSource,
             audius::AudiusSource,
             bandcamp::BandcampSource,
             deezer::DeezerSource,
-            flowery::FlowerySource,
             gaana::GaanaSource,
-            google_tts::GoogleTtsSource,
             http::HttpSource,
             jiosaavn::JioSaavnSource,
             lastfm::LastFMSource,
             local::LocalSource,
             mixcloud::MixcloudSource,
-            netease::NeteaseSource,
             pandora::PandoraSource,
             playable_track::BoxedSource,
             qobuz::QobuzSource,
@@ -494,7 +490,7 @@ pub mod registration {
                 }
             };
         }
-        if config.sources.youtube.as_ref().is_some_and(|c| c.enabled) {
+        if config.sources.youtube.as_ref().map_or(true, |c| c.enabled) {
             tracing::info!("Loaded source: YouTube");
             let yt_client = http_pool.get(None);
             let yt = YouTubeSource::new(config.sources.youtube.clone(), yt_client);
@@ -626,17 +622,6 @@ pub mod registration {
                 QobuzSource::new(config, http_pool.get(qobuz_proxy.clone()))
             );
         }
-        let anghami_proxy = config
-            .sources
-            .anghami
-            .as_ref()
-            .and_then(|c| c.proxy.clone());
-        register!(
-            config.sources.anghami.as_ref().is_some_and(|c| c.enabled),
-            "Anghami",
-            anghami_proxy,
-            AnghamiSource::new(config, http_pool.get(anghami_proxy.clone()))
-        );
         let shazam_proxy = config.sources.shazam.as_ref().and_then(|c| c.proxy.clone());
         register!(
             config.sources.shazam.as_ref().is_some_and(|c| c.enabled),
@@ -700,7 +685,6 @@ pub mod registration {
         );
         register_yandex(sources, config, http_pool);
         register_vkmusic(sources, config, http_pool);
-        register_netease(sources, config, http_pool);
         register_twitch(sources, config, http_pool);
         register_amazonmusic(sources, config, http_pool);
         if config.sources.http.as_ref().is_some_and(|c| c.enabled) {
@@ -814,26 +798,6 @@ pub mod registration {
             }
         }
     }
-    fn register_netease(
-        sources: &mut Vec<BoxedSource>,
-        config: &crate::config::AppConfig,
-        http_pool: &Arc<HttpClientPool>,
-    ) {
-        if let Some(c) = config.sources.netease.as_ref()
-            && c.enabled
-        {
-            let proxy = c.proxy.clone();
-            match NeteaseSource::new(config.sources.netease.clone(), http_pool.get(proxy.clone())) {
-                Ok(src) => {
-                    tracing::info!("Loaded source: Netease Music");
-                    sources.push(Box::new(src));
-                }
-                Err(e) => {
-                    tracing::error!("Netease Music source failed to initialize: {}", e);
-                }
-            }
-        }
-    }
     fn register_twitch(
         sources: &mut Vec<BoxedSource>,
         config: &crate::config::AppConfig,
@@ -868,18 +832,6 @@ pub mod registration {
         }
     }
     fn register_extra_sources(sources: &mut Vec<BoxedSource>, config: &crate::config::AppConfig) {
-        if let Some(c) = config.sources.google_tts.as_ref()
-            && c.enabled
-        {
-            tracing::info!("Loaded source: Google TTS");
-            sources.push(Box::new(GoogleTtsSource::new(c.clone())));
-        }
-        if let Some(c) = config.sources.flowery.as_ref()
-            && c.enabled
-        {
-            tracing::info!("Loaded source: Flowery");
-            sources.push(Box::new(FlowerySource::new(c.clone())));
-        }
         if config.sources.local.as_ref().is_some_and(|c| c.enabled) {
             tracing::info!("Loaded source: local");
             sources.push(Box::new(LocalSource::new()));
@@ -929,6 +881,7 @@ impl SourceManager {
                 return source.load(identifier, routeplanner.clone()).await;
             }
         }
+
         tracing::debug!(
             "SourceManager: No source matched identifier: '{}'",
             identifier
