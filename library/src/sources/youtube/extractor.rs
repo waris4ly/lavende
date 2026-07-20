@@ -23,12 +23,36 @@ pub fn extract_from_player(body: &Value, source_name: &str) -> Option<Track> {
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
-    let length_seconds = details
+    let parse_u64_val = |v: &Value| -> Option<u64> {
+        v.as_u64()
+            .or_else(|| v.as_i64().filter(|&i| i >= 0).map(|i| i as u64))
+            .or_else(|| v.as_str().and_then(|s| s.parse::<u64>().ok()))
+    };
+
+    let length = if is_stream {
+        9223372036854775807
+    } else if let Some(ms) = details
+        .get("length")
+        .or_else(|| details.get("lengthMs"))
+        .or_else(|| details.get("length_ms"))
+        .and_then(parse_u64_val)
+    {
+        ms
+    } else if let Some(sec) = details
         .get("lengthSeconds")
         .or_else(|| details.get("length_seconds"))
-        .and_then(|v| v.as_str())
-        .and_then(|s| s.parse::<u64>().ok())
-        .unwrap_or(0);
+        .and_then(parse_u64_val)
+    {
+        sec * 1000
+    } else if let Some(ms) = details
+        .get("approxDurationMs")
+        .or_else(|| details.get("approx_duration_ms"))
+        .and_then(parse_u64_val)
+    {
+        ms
+    } else {
+        0
+    };
 
     let artwork_url = extract_thumbnail(details, Some(video_id));
 
@@ -36,11 +60,7 @@ pub fn extract_from_player(body: &Value, source_name: &str) -> Option<Track> {
         identifier: video_id.to_string(),
         is_seekable: !is_stream,
         author,
-        length: if is_stream {
-            9223372036854775807
-        } else {
-            length_seconds * 1000
-        },
+        length,
         is_stream,
         position: 0,
         title,

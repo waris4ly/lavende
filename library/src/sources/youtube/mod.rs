@@ -1,4 +1,4 @@
-﻿pub mod identity;
+pub mod identity;
 pub mod innertube;
 pub mod oauth;
 pub mod extractor;
@@ -465,9 +465,9 @@ impl YouTubeSource {
                 tracing::debug!("Searching '{}' with {}", query, client.label);
                 let auth = self.oauth.get_auth_header().await;
                 let params = if client.client_name == "ANDROID_MUSIC" {
-                    Some("EgWKAQIIAWoQEAMQBBAJEAoQBRAREBAQFQ==")
+                    Some("EgWKAQIIAWoQEAMQBBAJEAoQBRAREBAQFQ%3D%3D")
                 } else {
-                    Some("EgWKAQIIAWoQEAMQBBAFEBAQCRAKEBUQEQ==")
+                    Some("EgWKAQIIAWoQEAMQBBAFEBAQCRAKEBUQEQ%3D%3D")
                 };
                 match search_request(&self.http, client, query, params, visitor_data, auth.as_deref()).await {
                     Ok(body) => {
@@ -498,7 +498,7 @@ impl YouTubeSource {
             }
             tracing::debug!("Searching '{}' with {}", query, client.label);
             let auth = self.oauth.get_auth_header().await;
-            let params = Some("EgIQAQ==");
+            let params = Some("EgIQAQ%3D%3D");
             match search_request(&self.http, client, query, params, visitor_data, auth.as_deref()).await {
                 Ok(body) => {
                     let tracks = extractor::extract_from_search(&body, "youtube");
@@ -527,9 +527,9 @@ impl YouTubeSource {
             tracing::debug!("Secondary search '{}' with {}", query, client.label);
             let auth = self.oauth.get_auth_header().await;
             let params = if client.client_name == "ANDROID_MUSIC" {
-                Some("EgWKAQIIAWoQEAMQBBAJEAoQBRAREBAQFQ==")
+                Some("EgWKAQIIAWoQEAMQBBAJEAoQBRAREBAQFQ%3D%3D")
             } else {
-                Some("EgWKAQIIAWoQEAMQBBAFEBAQCRAKEBUQEQ==")
+                Some("EgWKAQIIAWoQEAMQBBAFEBAQCRAKEBUQEQ%3D%3D")
             };
             match search_request(&self.http, client, query, params, visitor_data, auth.as_deref()).await {
                 Ok(body) => {
@@ -559,7 +559,7 @@ impl YouTubeSource {
             }
             tracing::debug!("Fallback search '{}' with {}", query, client.label);
             let auth = self.oauth.get_auth_header().await;
-            let params = Some("EgIQAQ==");
+            let params = Some("EgIQAQ%3D%3D");
             match search_request(&self.http, client, query, params, visitor_data, auth.as_deref()).await {
                 Ok(body) => {
                     let tracks = extractor::extract_from_search(&body, "youtube");

@@ -1,6 +1,6 @@
 {
   "name": "lavende",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "In-process Discord voice connection and playback engine",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

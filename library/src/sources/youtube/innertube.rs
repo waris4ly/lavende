@@ -1,4 +1,4 @@
-﻿use crate::{common::types::AnyResult, sources::youtube::cipher::YouTubeCipherManager};
+use crate::{common::types::AnyResult, sources::youtube::cipher::YouTubeCipherManager};
 use serde_json::{Value, json};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -354,7 +354,7 @@ pub fn decode_signature_cipher(cipher_str: &str) -> Option<(String, String)> {
 impl ClientProfile {
     pub fn can_handle_request(&self, identifier: &str) -> bool {
         match self.client_name {
-            "WEB_REMIX" => {
+            "WEB_REMIX" | "ANDROID_MUSIC" => {
                 identifier.contains("music.youtube.com") || identifier.starts_with("ytmsearch:")
             }
             _ => true,
@@ -481,7 +481,7 @@ pub async fn search_request(
     if let Some(p) = params {
         payload["params"] = json!(p);
     }
-    let url = if profile.client_name == "WEB_REMIX" {
+    let url = if profile.client_name == "WEB_REMIX" || profile.client_name == "ANDROID_MUSIC" {
         "https://music.youtube.com/youtubei/v1/search?prettyPrint=false".to_string()
     } else {
         format!("{}/youtubei/v1/search?prettyPrint=false", INNERTUBE_API)

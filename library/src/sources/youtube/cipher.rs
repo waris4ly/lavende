@@ -1,4 +1,4 @@
-﻿use crate::{common::types::AnyResult, config::sources::YouTubeCipherConfig};
+use crate::{common::types::AnyResult, config::sources::YouTubeCipherConfig};
 use serde_json::{Value, json};
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
@@ -48,7 +48,7 @@ impl YouTubeCipherManager {
     async fn get_player_script(&self) -> AnyResult<CachedPlayerScript> {
         let res = self
             .client
-            .get("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+            .get("https://www.youtube.com/embed/")
             .header(reqwest::header::USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36")
             .send()
             .await?;
@@ -57,9 +57,10 @@ impl YouTubeCipherManager {
         let mut script_url = if let Some(caps) = re.captures(&text) {
             caps[1].to_string()
         } else {
+            // Fallback to watch page
             let res = self
                 .client
-                .get("https://www.youtube.com/embed/")
+                .get("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
                 .header(reqwest::header::USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36")
                 .send()
                 .await?;
