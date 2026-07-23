@@ -6,11 +6,11 @@
         youtube::{
             cipher::YouTubeCipherManager,
             innertube::{
-                best_audio_format, check_playability, player_request, Format,
+                best_audio_format, check_playability,
+                player_request, resolve_format_url, ClientProfile,
             },
             oauth::YouTubeOAuth,
             stream::create_reader,
-            innertube::ClientProfile,
         },
     },
 };
@@ -117,7 +117,7 @@ impl YoutubeTrack {
 
         if let Some(best) = best_audio_format(&sd) {
             let player_page_url = format!("https://www.youtube.com/watch?v={}", self.identifier);
-            match self.resolve_format_url(best, &player_page_url).await {
+            match resolve_format_url(best, &player_page_url, &self.cipher_manager).await {
                 Ok(Some(url)) => return Ok(Some(url)),
                 Ok(None) => {
                     warn!("{} player: best format had no resolvable URL for {}", client.label, self.identifier);
@@ -132,67 +132,6 @@ impl YoutubeTrack {
         Ok(None)
     }
 
-    async fn resolve_format_url(&self, format: &Format, player_page_url: &str) -> AnyResult<Option<String>> {
-        if let Some(url) = format.url.as_ref() {
-            let n_param = url
-                .split("&n=")
-                .nth(1)
-                .or_else(|| url.split("?n=").nth(1))
-                .and_then(|s| s.split('&').next());
-
-            if n_param.is_none() {
-                return Ok(Some(url.to_string()));
-            }
-
-            let resolved = self
-                .cipher_manager
-                .resolve_url(url, player_page_url, n_param, None)
-                .await?;
-            return Ok(Some(resolved));
-        }
-
-        let cipher_str = format
-            .signature_cipher
-            .as_ref()
-            .or(format.cipher.as_ref());
-
-        if let Some(cipher_str) = cipher_str {
-            if let Some((url, sig)) = decode_signature_cipher(cipher_str) {
-                let n_param = url
-                    .split("&n=")
-                    .nth(1)
-                    .or_else(|| url.split("?n=").nth(1))
-                    .and_then(|s| s.split('&').next());
-
-                let resolved = self
-                    .cipher_manager
-                    .resolve_url(&url, player_page_url, n_param, Some(&sig))
-                    .await?;
-                return Ok(Some(resolved));
-            }
-        }
-
-        Ok(None)
-    }
-}
-
-fn decode_signature_cipher(cipher_str: &str) -> Option<(String, String)> {
-    let mut url = None;
-    let mut sig = None;
-    for part in cipher_str.split('&') {
-        if let Some((k, v)) = part.split_once('=') {
-            let decoded = urlencoding::decode(v).ok()?.to_string();
-            match k {
-                "url" => url = Some(decoded),
-                "s" => sig = Some(decoded),
-                _ => {}
-            }
-        }
-    }
-    match (url, sig) {
-        (Some(u), Some(s)) => Some((u, s)),
-        _ => None,
-    }
 }
 
 pub fn detect_audio_kind(url: &str, is_hls: bool) -> AudioFormat {

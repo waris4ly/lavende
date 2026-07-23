@@ -1,11 +1,13 @@
 pub mod layer {
     use crate::audio::{RingBuffer, buffer::PooledBuffer, constants::LAYER_BUFFER_SIZE};
     use flume::Receiver;
+    use super::mixer::FadeEnvelope;
     pub struct MixLayer {
         pub id: String,
         pub rx: Receiver<PooledBuffer>,
         pub ring_buffer: RingBuffer,
         pub volume: f32,
+        pub fade: Option<FadeEnvelope>,
         pub finished: bool,
     }
     impl MixLayer {
@@ -15,6 +17,7 @@ pub mod layer {
                 rx,
                 ring_buffer: RingBuffer::new(LAYER_BUFFER_SIZE),
                 volume: volume.clamp(0.0, 1.0),
+                fade: None,
                 finished: false,
             }
         }
@@ -31,7 +34,8 @@ pub mod layer {
             }
         }
         pub fn is_dead(&self) -> bool {
-            self.finished && self.ring_buffer.is_empty()
+            let fade_killed = self.fade.as_ref().map_or(false, |f| f.is_finished() && f.target_vol == 0.0);
+            fade_killed || (self.finished && self.ring_buffer.is_empty())
         }
         pub fn accumulate(&mut self, acc: &mut [i32]) {
             let byte_count = acc.len() * 2;
@@ -40,7 +44,11 @@ pub mod layer {
                     std::slice::from_raw_parts(bytes.as_ptr() as *const i16, bytes.len() / 2)
                 };
                 for (acc_val, &s) in acc.iter_mut().zip(samples.iter()) {
-                    *acc_val += (s as f32 * self.volume).round() as i32;
+                    let mut current_vol = self.volume;
+                    if let Some(fade) = &mut self.fade {
+                        current_vol *= fade.current_vol(1);
+                    }
+                    *acc_val += (s as f32 * current_vol).round() as i32;
                 }
             }
         }
@@ -138,6 +146,35 @@ pub mod mixer {
         final_pcm_buf: Vec<i16>,
         pub stuck_detector: Arc<StuckDetector>,
     }
+    pub struct FadeEnvelope {
+        pub start_vol: f32,
+        pub target_vol: f32,
+        pub samples_total: usize,
+        pub samples_passed: usize,
+    }
+    impl FadeEnvelope {
+        pub fn new(start_vol: f32, target_vol: f32, duration_ms: u64, sample_rate: u32) -> Self {
+            let samples_total = ((duration_ms as f64 / 1000.0) * sample_rate as f64) as usize;
+            Self {
+                start_vol,
+                target_vol,
+                samples_total,
+                samples_passed: 0,
+            }
+        }
+        pub fn current_vol(&mut self, advance: usize) -> f32 {
+            if self.samples_passed >= self.samples_total || self.samples_total == 0 {
+                return self.target_vol;
+            }
+            let progress = self.samples_passed as f32 / self.samples_total as f32;
+            let current = self.start_vol + (self.target_vol - self.start_vol) * progress;
+            self.samples_passed += advance;
+            current
+        }
+        pub fn is_finished(&self) -> bool {
+            self.samples_passed >= self.samples_total && self.samples_total > 0
+        }
+    }
     struct MixerTrack {
         flow: FlowController,
         pending: Vec<i16>,
@@ -147,6 +184,7 @@ pub mod mixer {
         position: Arc<AtomicU64>,
         is_buffering: Arc<AtomicBool>,
         config: PlayerConfig,
+        fade: Option<FadeEnvelope>,
         finished: bool,
     }
     impl Mixer {
@@ -173,6 +211,19 @@ pub mod mixer {
             let mut flow =
                 FlowController::for_mixer(rx, TARGET_SAMPLE_RATE, MIXER_CHANNELS, vol_raw);
             flow.volume.set_volume_instant(vol_raw);
+            
+            let mut new_fade = None;
+            if config.transitions.crossfade && config.transitions.crossfade_duration_ms > 0 {
+                let duration = config.transitions.crossfade_duration_ms;
+                for track in self.tracks.iter_mut() {
+                    let cur_vol = track.fade.as_ref().map_or(1.0, |f| f.target_vol);
+                    if cur_vol > 0.0 {
+                        track.fade = Some(FadeEnvelope::new(cur_vol, 0.0, duration, TARGET_SAMPLE_RATE));
+                    }
+                }
+                new_fade = Some(FadeEnvelope::new(0.0, 1.0, duration, TARGET_SAMPLE_RATE));
+            }
+
             self.tracks.push(MixerTrack {
                 flow,
                 pending: Vec::new(),
@@ -182,6 +233,7 @@ pub mod mixer {
                 position,
                 is_buffering,
                 config,
+                fade: new_fade,
                 finished: false,
             });
         }
@@ -189,6 +241,15 @@ pub mod mixer {
             self.opus_passthrough_track = Some(track_index);
         }
         pub fn take_opus_frame(&mut self) -> Option<Vec<u8>> {
+            let active_count = self.tracks.iter().filter(|t| {
+                let state = PlaybackState::from(t.state.load(Ordering::Acquire));
+                !matches!(state, PlaybackState::Paused | PlaybackState::Stopped | PlaybackState::Stopping | PlaybackState::Starting)
+            }).count();
+
+            if active_count != 1 {
+                return None;
+            }
+
             for track in self.tracks.iter_mut() {
                 let state = PlaybackState::from(track.state.load(Ordering::Acquire));
                 if matches!(
@@ -200,6 +261,12 @@ pub mod mixer {
                 ) {
                     continue;
                 }
+                
+                let vol_f = f32::from_bits(track.volume.load(Ordering::Acquire));
+                if (vol_f - 1.0).abs() > 0.001 || track.fade.is_some() {
+                    return None;
+                }
+
                 if let Some(packet) = track.flow.take_opus() {
                     track.position.fetch_add(960, Ordering::Relaxed);
                     return Some(packet);
@@ -231,8 +298,22 @@ pub mod mixer {
                     continue;
                 }
                 let vol_f = f32::from_bits(track.volume.load(Ordering::Acquire));
-                if (vol_f - track.flow.volume.current_volume()).abs() > 0.001 {
-                    track.flow.volume.set_volume(vol_f);
+                let (fade_mult, should_remove_fade) = if let Some(fade) = &mut track.fade {
+                    let v = fade.current_vol(TARGET_SAMPLE_RATE as usize / (1000 / 20));
+                    if fade.is_finished() && fade.target_vol == 0.0 {
+                        track.state.store(PlaybackState::Stopped as u8, Ordering::Release);
+                        continue;
+                    }
+                    (v, fade.is_finished())
+                } else {
+                    (1.0, false)
+                };
+                if should_remove_fade {
+                    track.fade = None;
+                }
+                let effective_vol = vol_f * fade_mult;
+                if (effective_vol - track.flow.volume.current_volume()).abs() > 0.001 {
+                    track.flow.volume.set_volume_instant(effective_vol);
                 }
                 if state == PlaybackState::Stopping && !track.flow.tape.is_ramping() {
                     track.flow.tape.tape_to(

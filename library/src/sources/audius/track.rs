@@ -26,9 +26,6 @@ impl PlayableTrack for AudiusTrack {
                 })?
         };
 
-        // Audius streams resolve to standard HTTP tracks
-        // Since we refactored http into modular form or will soon, we can use crate::sources::http::HttpTrack
-        // Let's import it via the crate root sources module
         crate::sources::http::HttpTrack {
             url,
             local_addr: self.local_addr,

@@ -1,4 +1,7 @@
-﻿use crate::protocol::tracks::{Track, TrackInfo};
+use crate::{
+    protocol::tracks::{Track, TrackInfo},
+    sources::youtube::innertube::extract_thumbnail,
+};
 use serde_json::Value;
 
 pub fn extract_from_player(body: &Value, source_name: &str) -> Option<Track> {
@@ -20,31 +23,44 @@ pub fn extract_from_player(body: &Value, source_name: &str) -> Option<Track> {
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
-    let length_seconds = details
+    let parse_u64_val = |v: &Value| -> Option<u64> {
+        v.as_u64()
+            .or_else(|| v.as_i64().filter(|&i| i >= 0).map(|i| i as u64))
+            .or_else(|| v.as_str().and_then(|s| s.parse::<u64>().ok()))
+    };
+
+    let length = if is_stream {
+        9223372036854775807
+    } else if let Some(ms) = details
+        .get("length")
+        .or_else(|| details.get("lengthMs"))
+        .or_else(|| details.get("length_ms"))
+        .and_then(parse_u64_val)
+    {
+        ms
+    } else if let Some(sec) = details
         .get("lengthSeconds")
         .or_else(|| details.get("length_seconds"))
-        .and_then(|v| v.as_str())
-        .and_then(|s| s.parse::<u64>().ok())
-        .unwrap_or(0);
+        .and_then(parse_u64_val)
+    {
+        sec * 1000
+    } else if let Some(ms) = details
+        .get("approxDurationMs")
+        .or_else(|| details.get("approx_duration_ms"))
+        .and_then(parse_u64_val)
+    {
+        ms
+    } else {
+        0
+    };
 
-    let artwork_url = details
-        .get("thumbnail")
-        .and_then(|t| t.get("thumbnails"))
-        .and_then(|arr| arr.as_array())
-        .and_then(|arr| arr.last())
-        .and_then(|thumb| thumb.get("url"))
-        .and_then(|url| url.as_str())
-        .map(|s| s.to_string());
+    let artwork_url = extract_thumbnail(details, Some(video_id));
 
     let track = Track::new(TrackInfo {
         identifier: video_id.to_string(),
         is_seekable: !is_stream,
         author,
-        length: if is_stream {
-            9223372036854775807
-        } else {
-            length_seconds * 1000
-        },
+        length,
         is_stream,
         position: 0,
         title,
@@ -375,9 +391,60 @@ pub fn extract_track(item: &Value, source_name: &str) -> Option<Track> {
             .or_else(|| {
                 renderer
                     .get("lengthSeconds")
-                    .and_then(|v| v.as_str())
-                    .and_then(|s| s.parse::<i64>().ok())
+                    .and_then(|v| v.as_i64())
                     .map(|s| s * 1000)
+            })
+            .or_else(|| {
+                let check_runs = |runs: &Vec<Value>| -> Option<i64> {
+                    for run in runs {
+                        if let Some(text) = run.get("text").and_then(|t| t.as_str()) {
+                            let text = text.trim();
+                            if text.contains(':') && text.chars().all(|c| c.is_ascii_digit() || c == ':') {
+                                let dur = parse_duration(text);
+                                if dur > 0 { return Some(dur); }
+                            }
+                        }
+                    }
+                    None
+                };
+
+                if let Some(cols) = renderer.get("fixedColumns").and_then(|c| c.as_array()) {
+                    for col in cols {
+                        if let Some(runs) = col
+                            .get("musicResponsiveListItemFixedColumnRenderer")
+                            .and_then(|r| r.get("text"))
+                            .and_then(|t| t.get("runs"))
+                            .and_then(|r| r.as_array())
+                        {
+                            if let Some(dur) = check_runs(runs) {
+                                return Some(dur);
+                            }
+                        }
+                    }
+                }
+
+                if let Some(cols) = renderer.get("flexColumns").and_then(|c| c.as_array()) {
+                    for col in cols {
+                        if let Some(runs) = col
+                            .get("musicResponsiveListItemFlexColumnRenderer")
+                            .and_then(|r| r.get("text"))
+                            .and_then(|t| t.get("runs"))
+                            .and_then(|r| r.as_array())
+                        {
+                            if let Some(dur) = check_runs(runs) {
+                                return Some(dur);
+                            }
+                        }
+                    }
+                }
+
+                if let Some(runs) = renderer.get("subtitle").and_then(|s| s.get("runs")).and_then(|r| r.as_array()) {
+                    if let Some(dur) = check_runs(runs) {
+                        return Some(dur);
+                    }
+                }
+
+                None
             })
             .unwrap_or(0)
     };
@@ -391,7 +458,7 @@ pub fn extract_track(item: &Value, source_name: &str) -> Option<Track> {
         position: 0,
         title,
         uri: Some(format!("https://www.youtube.com/watch?v={}", video_id)),
-        artwork_url: get_thumbnail(renderer),
+        artwork_url: get_thumbnail(renderer, Some(video_id)),
         isrc: None,
         source_name: source_name.to_string(),
     }))
@@ -506,15 +573,8 @@ fn parse_duration(s: &str) -> i64 {
     seconds * 1000
 }
 
-fn get_thumbnail(renderer: &Value) -> Option<String> {
-    renderer
-        .get("thumbnail")
-        .and_then(|t| t.get("thumbnails"))
-        .and_then(|arr| arr.as_array())
-        .and_then(|arr| arr.last())
-        .and_then(|thumb| thumb.get("url"))
-        .and_then(|url| url.as_str())
-        .map(|s| s.split('?').next().unwrap_or(s).to_string())
+fn get_thumbnail(renderer: &Value, video_id: Option<&str>) -> Option<String> {
+    extract_thumbnail(renderer, video_id)
 }
 
 fn find_music_search_shelf(content: &Value) -> Option<&Vec<Value>> {

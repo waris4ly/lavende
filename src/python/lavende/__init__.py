@@ -575,7 +575,19 @@ class LavendeManager:
 LavendePlayer = Player
 
 
+DEFAULT_SEARCH_PLATFORM = "ytsearch"
+
+import re as _re
+
+def _is_url(s: str) -> bool:
+    return bool(_re.match(r"^https?://", s))
+
+def _has_search_prefix(s: str) -> bool:
+    return bool(_re.match(r"^[a-z]+search:|^[a-z]+rec:|^[a-z]+isrc:", s.split("?")[0]))
+
 async def load(identifier: str, requester: Any = None) -> Dict[str, Any]:
+    if not _is_url(identifier) and not _has_search_prefix(identifier):
+        identifier = f"{DEFAULT_SEARCH_PLATFORM}:{identifier}"
     json_str = await _rust_load(identifier)
     data = json.loads(json_str)
     result: Dict[str, Any] = {"loadType": "empty", "tracks": []}

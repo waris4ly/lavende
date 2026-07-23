@@ -13,6 +13,6 @@
   "dependencies": {
     "discord.js": "^14.26.4",
     "dotenv": "^17.4.2",
-    "lavende": "1.0.6"
+    "lavende": "file:../../src/node"
   }
 }
